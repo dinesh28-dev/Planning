@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tool Room MES - 25 VMC & Fleet Cloud Scheduler</title>
+  <title>Production Planning </title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
@@ -120,7 +120,7 @@
       </div>
       <button class="btn-primary" style="margin-top: 8px; padding: 8px;" onclick="authenticateUser()">Sign In (Cloud Sync)</button>
       <div style="font-size: 11px; color: #64748b; text-align: center; margin-top: 6px;">
-        Admin: <b>admin / admin123</b> | Operator: <b>operator / vmc123</b>
+        Admin: <b>admin / admin</b> | Operator: <b>operator / vmc123</b>
       </div>
     </div>
   </div>
@@ -129,7 +129,7 @@
 <div class="container" id="mainApp" style="display: none;">
   <div class="card no-print" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
     <div>
-      <h2 style="font-size: 17px;">Tool Room MES Cloud Plan (25 VMC + Fleet)</h2>
+      <h2 style="font-size: 17px;">Production Planning</h2>
       <span style="font-size: 11px; color: #64748b;">
         Cloud Status: <strong style="color: #16a34a;">● Live Synced</strong> • Logged as: <strong id="userBadge" style="color: var(--accent);"></strong>
       </span>
