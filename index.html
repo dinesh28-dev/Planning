@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Production Planning </title>
+  <title>Tool Room MES - 25 VMC & Fleet Cloud Scheduler</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
@@ -129,7 +129,7 @@
 <div class="container" id="mainApp" style="display: none;">
   <div class="card no-print" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
     <div>
-      <h2 style="font-size: 17px;">Production Planning</h2>
+      <h2 style="font-size: 17px;">Tool Room MES Cloud Plan (25 VMC + Fleet)</h2>
       <span style="font-size: 11px; color: #64748b;">
         Cloud Status: <strong style="color: #16a34a;">● Live Synced</strong> • Logged as: <strong id="userBadge" style="color: var(--accent);"></strong>
       </span>
@@ -290,8 +290,8 @@
 // ==========================================
 // 1. SUPABASE CLOUD KEYS
 // ==========================================
-const SUPABASE_URL = "https://nwdnbalqioewcoygbgyp.supabase.co"; 
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im53ZG5iYWxxaW9ld2NveWdiZ3lwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4ODI1MjAsImV4cCI6MjEwNDQ1ODUyMH0.HMdDj4XhT3n99qQ2murxAz_LCiGS-DC-cYgblrVf5KA";
+const SUPABASE_URL = "https://nwdnbalqioewcoygbgyp.supabase.co"; // Paste your URL
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im53ZG5iYWxxaW9ld2NveWdiZ3lwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4ODI1MjAsImV4cCI6MjEwNDQ1ODUyMH0.HMdDj4XhT3n99qQ2murxAz_LCiGS-DC-cYgblrVf5KA";              // Paste your anon key
 
 let supabaseClient = null;
 if (SUPABASE_URL.startsWith("https://") && !SUPABASE_URL.includes("yourprojectid")) {
@@ -373,6 +373,7 @@ if (savedSession) {
   applyRolePermissions();
 }
 
+// Helper to get distinct available machines for parallel jobs
 function pickNextBestMachines(count, category) {
   let list = ALL_MACHINES;
   if (category && category !== 'ALL') {
@@ -399,6 +400,7 @@ async function fetchCloudJobs() {
     return;
   }
 
+  // Preserve proper Line 1, Line 2 ordering
   jobsList = (data || []).map(row => ({
     id: row.id,
     projectCode: row.project_code,
@@ -418,6 +420,7 @@ async function fetchCloudJobs() {
     created_at: row.created_at
   }));
 
+  // Sort: URGENT first, then by Part Name line sequence so Line 1 is always before Line 2
   jobsList.sort((a, b) => {
     if (a.priority === 'URGENT' && b.priority !== 'URGENT') return -1;
     if (b.priority === 'URGENT' && a.priority !== 'URGENT') return 1;
@@ -706,17 +709,10 @@ function recalculateAndRender() {
       job.assignedMachine = targetMachine;
     }
 
-    // FIXED: Properly respect the manual start time, letting it override machine availability queue if explicitly specified
     let currentStart = new Date(machineTimes[targetMachine] || baseDate);
     if (job.manualStartTime) {
       let mStart = new Date(job.manualStartTime);
-      if (!isNaN(mStart.getTime())) {
-        if (mStart > currentStart) {
-          currentStart = mStart;
-        } else if (p === 1 && currentSI === 1) {
-          currentStart = mStart;
-        }
-      }
+      if (mStart > currentStart) currentStart = mStart;
     }
 
     for (let p = 1; p <= job.qty; p++) {
@@ -870,10 +866,12 @@ document.getElementById('jobForm').addEventListener('submit', async function(e) 
     return;
   }
 
+  // Pick distinct machines for parallel execution
   let assignedMachines = [];
   if (checkedBoxes.length >= parallelCount) {
     assignedMachines = checkedBoxes.slice(0, parallelCount);
   } else {
+    // Auto assign distinct active machines (e.g. VMC-01, VMC-02)
     const category = document.getElementById('machineCategoryFilter').value;
     assignedMachines = pickNextBestMachines(parallelCount, category);
   }
@@ -887,6 +885,8 @@ document.getElementById('jobForm').addEventListener('submit', async function(e) 
     if (assignedQty <= 0) continue;
 
     let assignedMachine = assignedMachines[i] || `VMC-${i + 1 < 10 ? '0' + (i + 1) : i + 1}`;
+    
+    // Unique ID for each line to prevent button interference
     let uniqueId = 'job_' + Date.now() + '_L' + (i + 1) + '_' + Math.random().toString(36).substring(2, 9);
 
     newSubJobs.push({
