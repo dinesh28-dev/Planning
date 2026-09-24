@@ -75,6 +75,8 @@
     .btn-primary:hover { background: var(--accent-hover); }
     .btn-excel { background: #10b981; color: white; }
     .btn-excel:hover { background: #059669; }
+    .btn-import { background: #8b5cf6; color: white; }
+    .btn-import:hover { background: #7c3aed; }
     .btn-nav { background: #e2e8f0; color: var(--text-main); padding: 6px 10px; font-size: 12px; }
 
     .toolbar-group {
@@ -103,12 +105,6 @@
     .fleet-category-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
     .tab-btn { background: #e2e8f0; color: var(--text-main); font-size: 11px; padding: 4px 10px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; }
     .tab-btn.active { background: var(--accent); color: white; }
-    .fleet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; max-height: 160px; overflow-y: auto; }
-    .machine-card {
-      background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; 
-      padding: 8px; text-align: center; border-left: 4px solid var(--accent); font-size: 11px;
-    }
-    .machine-card.is-breakdown { background: #fef2f2; border-color: #fecaca; border-left-color: var(--breakdown); }
 
     .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
     .summary-box { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; border-left: 4px solid var(--accent); box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
@@ -132,7 +128,7 @@
     tr.group-start { border-top: 2px solid #cbd5e1; }
     tr.status-running { background-color: #fffbeb !important; }
     tr.status-completed { background-color: #f0fdf4 !important; }
-    tr.status-delayed { background-color: #fff1f2 !important; }
+    tr.status-delayed { background-color: #fef2f2 !important; }
     
     .badge-status { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 700; text-transform: uppercase; }
     .badge-planned { background: #f1f5f9; color: var(--text-muted); }
@@ -193,6 +189,7 @@
   <div class="sidebar-menu">
     <button class="menu-item active" onclick="switchModule('homeTab', this)"><span>🏠</span> Home Dashboard</button>
     <button class="menu-item" onclick="switchModule('planningTab', this)"><span>📅</span> Production Planning</button>
+    <button class="menu-item" onclick="switchModule('machinesTab', this)"><span>🛠️</span> Master List of Machines</button>
     <button class="menu-item" onclick="switchModule('shiftPlanTab', this)"><span>🕒</span> Shift Roster Planner</button>
     <button class="menu-item" onclick="switchModule('attendanceTab', this)"><span>👥</span> Workforce Attendance</button>
     <button class="menu-item" onclick="switchModule('downtimeTab', this)"><span>📉</span> Downtime Log</button>
@@ -210,8 +207,7 @@
       <span style="font-size: 11px; color: var(--text-muted);">Cloud Status: <strong style="color: var(--completed);">● Live Synced</strong></span>
     </div>
     <div style="display: flex; gap: 10px; align-items: center;">
-      <button class="btn-excel" onclick="exportToExcel()">📥 Export Excel (.xlsx)</button>
-      <button class="btn-primary" onclick="window.print()">🖨️ Print Sheet</button>
+      <button class="btn-excel" onclick="window.print()">🖨️ Print Sheet</button>
       <button style="background: #e2e8f0; color: var(--text-main);" onclick="logout()">Logout</button>
     </div>
   </div>
@@ -222,7 +218,7 @@
     <div id="homeTab" class="module-pane active">
       <div class="card" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; padding: 25px;">
         <h2 style="font-size: 22px; color: white; margin-bottom: 6px;">Welcome to Production ERP Suite</h2>
-        <p style="font-size: 13px; color: #94a3b8; margin: 0;">Enterprise Tool Room & 25 VMC Machine Shop-Floor Control System</p>
+        <p style="font-size: 13px; color: #94a3b8; margin: 0;">Enterprise Tool Room & Machine Shop-Floor Control System</p>
       </div>
 
       <div class="summary-grid">
@@ -232,7 +228,7 @@
         </div>
         <div class="summary-box" style="border-left-color: var(--completed);">
           <div class="summary-lbl">Active Fleet Online</div>
-          <div class="summary-num" id="homeFleetVal">40 / 40</div>
+          <div class="summary-num" id="homeFleetVal">43 / 43</div>
         </div>
         <div class="summary-box" style="border-left-color: var(--running);">
           <div class="summary-lbl">Scheduled Jobs</div>
@@ -243,56 +239,38 @@
           <div class="summary-num" id="homeDtVal">0 min</div>
         </div>
       </div>
-
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px;">
-        <div class="card">
-          <h3 style="margin-bottom: 10px; font-size: 14px; color: var(--primary);">Quick Navigation</h3>
-          <div style="display: flex; flex-direction: column; gap: 8px;">
-            <button class="btn-nav" style="text-align: left; padding: 10px;" onclick="switchModule('planningTab', document.querySelectorAll('.menu-item')[1])">📅 Open Production Planning & Gantt Scheduler</button>
-            <button class="btn-nav" style="text-align: left; padding: 10px;" onclick="switchModule('shiftPlanTab', document.querySelectorAll('.menu-item')[2])">🕒 Manage Weekly Shift Roster</button>
-            <button class="btn-nav" style="text-align: left; padding: 10px;" onclick="switchModule('attendanceTab', document.querySelectorAll('.menu-item')[3])">👥 Track Daily Workforce Attendance</button>
-            <button class="btn-nav" style="text-align: left; padding: 10px;" onclick="switchModule('downtimeTab', document.querySelectorAll('.menu-item')[4])">📉 Log Machine Stoppages & Downtime</button>
-            <button class="btn-nav" style="text-align: left; padding: 10px;" onclick="switchModule('oeeTab', document.querySelectorAll('.menu-item')[5])">📊 View Section OEE Analytics Matrix</button>
-          </div>
-        </div>
-
-        <div class="card">
-          <h3 style="margin-bottom: 10px; font-size: 14px; color: var(--primary);">System Status Overview</h3>
-          <div style="font-size: 12px; display: flex; flex-direction: column; gap: 10px; color: var(--text-muted);">
-            <div>● <b>Database Connection:</b> Supabase Live Cloud Synced</div>
-            <div>● <b>Machine Fleet Capacity:</b> 25 VMCs + 15 Tool Room Machines</div>
-            <div>● <b>Active Shift Mode:</b> <span id="homeShiftModeLbl" style="color: var(--accent); font-weight: 700;">3 Shifts (24 Hrs)</span></div>
-            <div>● <b>Active User:</b> <span id="homeUserRoleLbl" style="font-weight: 700; color: var(--primary);"></span></div>
-          </div>
-        </div>
-      </div>
     </div>
 
-    <!-- PRODUCTION PLANNING -->
+    <!-- PRODUCTION PLANNING (EXPORT ONLY) -->
     <div id="planningTab" class="module-pane">
-      <div class="card no-print" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 12px 16px;">
-        <div class="toolbar-group">
-          <span style="font-size: 11px; font-weight: 700; color: #1d4ed8;">⏰ Default Plant Shift:</span>
-          <select id="globalShiftMode" onchange="onGlobalShiftModeChanged()" style="width: auto; padding: 4px 8px; font-weight: 700; background: white;">
-            <option value="3_SHIFT_8H" selected>8 Hrs x 3 Shifts (24 Hrs)</option>
-            <option value="2_SHIFT_8H">8 Hrs x 2 Shifts (6:00 AM – 11:00 PM)</option>
-            <option value="GEN_SHIFT_8H">General Shift (9:00 AM – 5:30 PM)</option>
-            <option value="2_SHIFT_12H">12 Hrs x 2 Shifts (Urgent 24 Hrs)</option>
-          </select>
-        </div>
-
-        <div class="toolbar-group">
-          <span style="font-size: 11px; font-weight: 700; color: #1d4ed8;">📅 Timeline View:</span>
-          <select id="dateFilterMode" onchange="toggleDateFilterMode()" style="width: auto; padding: 4px 8px; font-weight: 700; background: white;">
-            <option value="ALL" selected>All Dates (Live Plan)</option>
-            <option value="DATE">Specific Date Only</option>
-          </select>
-          <div id="specificDateControls" style="display: none; align-items: center; gap: 6px;">
-            <button class="btn-nav" onclick="changeDateOffset(-1)">◀</button>
-            <input type="date" id="selectedPlanDate" onchange="onDateFilterChanged()" style="width: auto; padding: 4px 6px;">
-            <button class="btn-nav" onclick="changeDateOffset(1)">▶</button>
-            <button class="btn-nav" onclick="setTodayDate()">Today</button>
+      <div class="card no-print" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; padding: 12px 16px;">
+        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+          <div class="toolbar-group">
+            <span style="font-size: 11px; font-weight: 700; color: #1d4ed8;">⏰ Default Plant Shift:</span>
+            <select id="globalShiftMode" onchange="onGlobalShiftModeChanged()" style="width: auto; padding: 4px 8px; font-weight: 700; background: white;">
+              <option value="3_SHIFT_8H" selected>8 Hrs x 3 Shifts (24 Hrs)</option>
+              <option value="2_SHIFT_8H">8 Hrs x 2 Shifts (6:00 AM – 11:00 PM)</option>
+              <option value="GEN_SHIFT_8H">General Shift (9:00 AM – 5:30 PM)</option>
+              <option value="2_SHIFT_12H">12 Hrs x 2 Shifts (Urgent 24 Hrs)</option>
+            </select>
           </div>
+
+          <div class="toolbar-group">
+            <span style="font-size: 11px; font-weight: 700; color: #1d4ed8;">📅 Timeline View:</span>
+            <select id="dateFilterMode" onchange="toggleDateFilterMode()" style="width: auto; padding: 4px 8px; font-weight: 700; background: white;">
+              <option value="ALL" selected>All Dates (Live Plan)</option>
+              <option value="DATE">Specific Date Only</option>
+            </select>
+            <div id="specificDateControls" style="display: none; align-items: center; gap: 6px;">
+              <button class="btn-nav" onclick="changeDateOffset(-1)">◀</button>
+              <input type="date" id="selectedPlanDate" onchange="onDateFilterChanged()" style="width: auto; padding: 4px 6px;">
+              <button class="btn-nav" onclick="changeDateOffset(1)">▶</button>
+              <button class="btn-nav" onclick="setTodayDate()">Today</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <button class="btn-excel" onclick="exportToExcel('outputPlan', 'Production_Planning_Plan.xlsx')">📥 Export Excel (.xlsx)</button>
         </div>
       </div>
 
@@ -318,20 +296,9 @@
           <div style="font-size: 10px; color: var(--text-muted);" id="completionRate">0%</div>
         </div>
         <div class="summary-box" style="border-left-color: var(--breakdown);">
-          <div class="summary-lbl">Fleet Status (40 Machines)</div>
-          <div class="summary-num" id="fleetHealthCount">40 / 40 Online</div>
+          <div class="summary-lbl">Fleet Status (43 Machines)</div>
+          <div class="summary-num" id="fleetHealthCount">43 / 43 Online</div>
           <div style="font-size: 10px; color: var(--text-muted);" id="breakdownCount">0 in Breakdown</div>
-        </div>
-      </div>
-
-      <div class="card no-print">
-        <div class="collapsible-header" onclick="toggleFleetDrawer()">
-          <span>⚙️ Machine Fleet Status & Breakdown Controls</span>
-          <span id="drawerArrow" style="color: var(--accent);">▼ Show Fleet</span>
-        </div>
-        <div class="drawer-content" id="fleetDrawer" style="display: none;">
-          <div class="fleet-category-tabs" id="fleetTabs"></div>
-          <div class="fleet-grid" id="machineGrid"></div>
         </div>
       </div>
 
@@ -343,12 +310,6 @@
         <div class="drawer-content" id="ganttDrawer">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
             <div class="fleet-category-tabs" id="ganttTabs" style="margin-bottom: 0;"></div>
-            <div style="display: flex; gap: 10px; font-size: 11px; align-items: center; font-weight: 600;">
-              <span><span style="display:inline-block; width:10px; height:10px; background:#3b82f6; border-radius:2px;"></span> Planned</span>
-              <span><span style="display:inline-block; width:10px; height:10px; background:#f59e0b; border-radius:2px;"></span> Running</span>
-              <span><span style="display:inline-block; width:10px; height:10px; background:#10b981; border-radius:2px;"></span> Completed</span>
-              <span><span style="display:inline-block; width:10px; height:10px; background:#ef4444; border-radius:2px;"></span> Delayed</span>
-            </div>
           </div>
           <div class="gantt-container" id="ganttView"></div>
         </div>
@@ -417,7 +378,7 @@
             </div>
             <div>
               <label>Parallel Machines</label>
-              <input type="number" id="parallelCount" min="1" max="25" value="1" onchange="validateParallelCount()">
+              <input type="number" id="parallelCount" min="1" max="43" value="1" onchange="validateParallelCount()">
             </div>
           </div>
 
@@ -426,13 +387,12 @@
               <label style="margin: 0; min-width: 140px;">Filter Process Group:</label>
               <select id="machineCategoryFilter" style="max-width: 220px;" onchange="renderFilteredMachines()">
                 <option value="ALL">Show All Categories</option>
-                <option value="VMC" selected>25 VMC Fleet (VMC-01 to 25)</option>
-                <option value="SG">Surface Grinding (SG-01 to 04)</option>
+                <option value="VMC" selected>25 VMC Fleet</option>
+                <option value="SG">Surface Grinding (6 Units)</option>
                 <option value="WC">Wire Cut HS / SS</option>
                 <option value="DRO">DRO Machines</option>
                 <option value="OTHER">Lathe, Milling, EDM, Laser</option>
               </select>
-              <span style="font-size: 11px; color: var(--text-muted);">(Select specific machines or leave blank for Auto Allocation)</span>
             </div>
             <div class="sub-chips-container" id="filteredMachinesList"></div>
           </div>
@@ -475,24 +435,61 @@
       </div>
     </div>
 
-    <!-- SHIFT PLANNING ROTATION -->
+    <!-- MASTER LIST OF MACHINES (IMPORT & EXPORT) -->
+    <div id="machinesTab" class="module-pane">
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <h3 style="margin-bottom: 2px;">Master List of Machines & Specifications</h3>
+            <span style="font-size: 11px; color: var(--text-muted);">Manage machine specifications (43 total units) with full import and export tools.</span>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <input type="file" id="importMachinesFile" accept=".xlsx, .xls, .csv" style="display:none;" onchange="importDataFromFile(event, 'machines')">
+            <button class="btn-import" onclick="document.getElementById('importMachinesFile').click()">📤 Import Excel/CSV</button>
+            <button class="btn-excel" onclick="exportToExcel('masterMachineTable', 'Master_Machines_List.xlsx')">📥 Export Excel</button>
+          </div>
+        </div>
+        <div class="fleet-category-tabs" id="masterMachineTabs" style="margin-top: 10px; margin-bottom: 0;"></div>
+      </div>
+
+      <div class="card">
+        <table id="masterMachineTable">
+          <thead>
+            <tr>
+              <th>Machine ID</th>
+              <th>Section Group</th>
+              <th>Make / Manufacturer</th>
+              <th>Model Name</th>
+              <th>Controller Type</th>
+              <th>Installation Year</th>
+              <th>Live Status</th>
+              <th style="text-align: center;">Breakdown Control</th>
+            </tr>
+          </thead>
+          <tbody id="masterMachineTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SHIFT PLANNING ROTATION (IMPORT & EXPORT) -->
     <div id="shiftPlanTab" class="module-pane">
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
           <div>
             <h3 style="margin-bottom: 2px;">Weekly Shift Roster & Rotation Planner</h3>
-            <span style="font-size: 11px; color: var(--text-muted);">Configure shift assignments and rotations across your 28 employees.</span>
+            <span style="font-size: 11px; color: var(--text-muted);">Configure shift assignments across 28 employees with import and export tools.</span>
           </div>
           <div style="display: flex; gap: 8px; align-items: center;">
-            <label style="margin:0;">Week Starting:</label>
-            <input type="date" id="rosterWeekDate" style="width: auto;" value="2026-09-28">
+            <input type="file" id="importRosterFile" accept=".xlsx, .xls, .csv" style="display:none;" onchange="importDataFromFile(event, 'roster')">
+            <button class="btn-import" onclick="document.getElementById('importRosterFile').click()">📤 Import Roster</button>
+            <button class="btn-excel" onclick="exportToExcel('shiftRosterTable', 'Shift_Roster_Plan.xlsx')">📥 Export Excel</button>
             <button class="btn-primary" onclick="saveShiftRoster()">Save Roster Setup</button>
           </div>
         </div>
       </div>
 
       <div class="card">
-        <table>
+        <table id="shiftRosterTable">
           <thead>
             <tr>
               <th>Emp. ID</th>
@@ -512,24 +509,27 @@
       </div>
     </div>
 
-    <!-- ATTENDANCE MODULE -->
+    <!-- ATTENDANCE MODULE (IMPORT & EXPORT) -->
     <div id="attendanceTab" class="module-pane">
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
           <div>
             <h3 style="margin-bottom: 2px;">Section-wise Workforce Attendance Log</h3>
-            <span style="font-size: 11px; color: var(--text-muted);">Shifts dynamically pulled from the Weekly Shift Roster Planner.</span>
+            <span style="font-size: 11px; color: var(--text-muted);">Synced with roster. Supports data import and export.</span>
           </div>
           <div style="display: flex; gap: 8px; align-items: center;">
             <label style="margin:0;">Date:</label>
             <input type="date" id="attDate" style="width: auto;" onchange="renderAttendanceTable()">
+            <input type="file" id="importAttFile" accept=".xlsx, .xls, .csv" style="display:none;" onchange="importDataFromFile(event, 'attendance')">
+            <button class="btn-import" onclick="document.getElementById('importAttFile').click()">📤 Import</button>
+            <button class="btn-excel" onclick="exportToExcel('attendanceTable', 'Attendance_Log.xlsx')">📥 Export Excel</button>
             <button class="btn-primary" onclick="markAllPresent()">Mark All Present</button>
           </div>
         </div>
       </div>
 
       <div class="card">
-        <table>
+        <table id="attendanceTable">
           <thead>
             <tr>
               <th>Emp. ID</th>
@@ -547,11 +547,20 @@
       </div>
     </div>
 
-    <!-- DOWNTIME MANAGEMENT -->
+    <!-- DOWNTIME MANAGEMENT (IMPORT & EXPORT) -->
     <div id="downtimeTab" class="module-pane">
       <div class="card">
-        <h3 style="margin-bottom: 2px;">Shop-Floor Downtime & Stoppage Log</h3>
-        <span style="font-size: 11px; color: var(--text-muted);">Record machine breakdowns, tool changes, material waits, and power stoppages.</span>
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <h3 style="margin-bottom: 2px;">Shop-Floor Downtime & Stoppage Log</h3>
+            <span style="font-size: 11px; color: var(--text-muted);">Record machine breakdowns and export/import stoppage logs.</span>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <input type="file" id="importDtFile" accept=".xlsx, .xls, .csv" style="display:none;" onchange="importDataFromFile(event, 'downtime')">
+            <button class="btn-import" onclick="document.getElementById('importDtFile').click()">📤 Import</button>
+            <button class="btn-excel" onclick="exportToExcel('downtimeTable', 'Downtime_Logs.xlsx')">📥 Export Excel</button>
+          </div>
+        </div>
       </div>
 
       <div class="card">
@@ -606,7 +615,7 @@
 
       <div class="card">
         <h3 style="margin-bottom: 8px;">Recorded Stoppage Events</h3>
-        <table>
+        <table id="downtimeTable">
           <thead>
             <tr>
               <th>Date / Time</th>
@@ -624,11 +633,14 @@
       </div>
     </div>
 
-    <!-- OEE CALCULATION -->
+    <!-- OEE CALCULATION (EXPORT ONLY) -->
     <div id="oeeTab" class="module-pane">
-      <div class="card">
-        <h3 style="margin-bottom: 2px;">Section-wise OEE (Overall Equipment Effectiveness) Calculator</h3>
-        <span style="font-size: 11px; color: var(--text-muted);">Automatically calculated from active plan quantities, execution time, and recorded downtime.</span>
+      <div class="card" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+        <div>
+          <h3 style="margin-bottom: 2px;">Section-wise OEE Calculator</h3>
+          <span style="font-size: 11px; color: var(--text-muted);">Automatically calculated from active plan quantities and recorded downtime.</span>
+        </div>
+        <button class="btn-excel" onclick="exportToExcel('oeeTable', 'Section_OEE_Analytics.xlsx')">📥 Export Excel (.xlsx)</button>
       </div>
 
       <div class="summary-grid">
@@ -652,7 +664,7 @@
 
       <div class="card">
         <h3 style="margin-bottom: 8px;">Auto-Aggregated Section Performance Matrix</h3>
-        <table>
+        <table id="oeeTable">
           <thead>
             <tr>
               <th>Section Group</th>
@@ -698,25 +710,34 @@ function switchModule(paneId, btnElem) {
   if (paneId === 'attendanceTab') renderAttendanceTable();
   if (paneId === 'shiftPlanTab') renderShiftRosterTable();
   if (paneId === 'downtimeTab') renderDowntimeTable();
+  if (paneId === 'machinesTab') renderMasterMachinesTable();
 }
 
+// Updated Fleet Configuration: Wire Cut HS = 4, Surface Grinding = 6 (Total 43)
 const FLEET_MAP = [
-  { group: "VMC", label: "25 VMC Fleet", prefix: "VMC", count: 25 },
-  { group: "SG", label: "Surface Grinding", prefix: "SG", count: 4 },
-  { group: "WC", label: "Wire Cut HS", prefix: "WC-HS", count: 3 },
-  { group: "WC", label: "Wire Cut SS", prefix: "WC-SS", count: 1 },
-  { group: "DRO", label: "DRO Machines", prefix: "DRO", count: 2 },
-  { group: "OTHER", label: "CNC Lathe", prefix: "CNC-Lathe", count: 1 },
-  { group: "OTHER", label: "Rough Milling", prefix: "Rough-Mill", count: 1 },
-  { group: "OTHER", label: "Spark EDM", prefix: "EDM", count: 1 },
-  { group: "OTHER", label: "Laser Engraving", prefix: "Laser", count: 2 }
+  { group: "VMC", label: "25 VMC Fleet", prefix: "VMC", count: 25, make: "HAAS / DMG Mori", controller: "Fanuc / Siemens 840D", year: "2021" },
+  { group: "SG", label: "Surface Grinding", prefix: "SG", count: 6, make: "Mitsui / Chevalier", controller: "DRO / PLC Auto", year: "2019" },
+  { group: "WC", label: "Wire Cut HS", prefix: "WC-HS", count: 4, make: "SODICK / Charmilles", controller: "Sodick NC", year: "2022" },
+  { group: "WC", label: "Wire Cut SS", prefix: "WC-SS", count: 1, make: "Mitsubishi", controller: "Mitsubishi Advance", year: "2020" },
+  { group: "DRO", label: "DRO Machines", prefix: "DRO", count: 2, make: "Acumen / Jyoti", controller: "2-Axis DRO", year: "2018" },
+  { group: "OTHER", label: "CNC Lathe", prefix: "CNC-Lathe", count: 1, make: "Ace Micromatic", controller: "Fanuc Oi-TF", year: "2023" },
+  { group: "OTHER", label: "Rough Milling", prefix: "Rough-Mill", count: 1, make: "BFW", controller: "BFW Numeric", year: "2017" },
+  { group: "OTHER", label: "Spark EDM", prefix: "EDM", count: 1, make: "Electronica", controller: "Pulse CNC", year: "2019" },
+  { group: "OTHER", label: "Laser Engraving", prefix: "Laser", count: 2, make: "Trumpf / Maxphotonics", controller: "EzCad Pro", year: "2023" }
 ];
 
 let ALL_MACHINES = [];
 FLEET_MAP.forEach(item => {
   for (let i = 1; i <= item.count; i++) {
     let numStr = item.count > 1 ? (i < 10 ? "0" + i : i) : i;
-    ALL_MACHINES.push({ id: `${item.prefix}-${numStr}`, group: item.group });
+    ALL_MACHINES.push({ 
+      id: `${item.prefix}-${numStr}`, 
+      group: item.group, 
+      make: item.make, 
+      model: `${item.prefix} Model ${numStr}`, 
+      controller: item.controller, 
+      year: item.year 
+    });
   }
 });
 
@@ -769,6 +790,7 @@ let downtimeLogs = [
   { id: 2, time: "2026-09-24 14:15", machine: "SG-01", category: "Electrical / Power", minutes: 30, shift: "Shift 2", team: "Maintenance", remarks: "Voltage fluctuation trip" }
 ];
 let currentUser = null;
+let activeMasterMachineGroup = 'VMC';
 
 function getDayNameFromDate(dateStr) {
   const d = new Date(dateStr);
@@ -1069,15 +1091,6 @@ function validateParallelCount() {
   if (checked.length > 0 && checked.length !== count) checked.forEach(cb => cb.checked = false);
 }
 
-let activeFleetTab = 'VMC';
-function toggleFleetDrawer() {
-  const drawer = document.getElementById('fleetDrawer');
-  const arrow = document.getElementById('drawerArrow');
-  const isHidden = drawer.style.display === 'none' || drawer.style.display === '';
-  drawer.style.display = isHidden ? 'block' : 'none';
-  arrow.innerText = isHidden ? '▲ Hide Fleet' : '▼ Show Fleet';
-}
-
 let activeGanttTab = 'VMC';
 function toggleGanttDrawer() {
   const drawer = document.getElementById('ganttDrawer');
@@ -1085,31 +1098,6 @@ function toggleGanttDrawer() {
   const isHidden = drawer.style.display === 'none' || drawer.style.display === '';
   drawer.style.display = isHidden ? 'block' : 'none';
   arrow.innerText = isHidden ? '▲ Hide Gantt' : '▼ Show Gantt';
-}
-
-function initFleetTabs() {
-  const tabsContainer = document.getElementById('fleetTabs');
-  tabsContainer.innerHTML = '';
-  const tabs = [
-    { id: 'VMC', label: '25 VMCs' },
-    { id: 'SG', label: 'Surface Grinding' },
-    { id: 'WC', label: 'Wire Cut' },
-    { id: 'DRO', label: 'DRO' },
-    { id: 'OTHER', label: 'Other Fleet' }
-  ];
-
-  tabs.forEach(t => {
-    let btn = document.createElement('button');
-    btn.className = `tab-btn ${t.id === activeFleetTab ? 'active' : ''}`;
-    btn.innerText = t.label;
-    btn.type = 'button';
-    btn.onclick = () => {
-      activeFleetTab = t.id;
-      initFleetTabs();
-      recalculateAndRender();
-    };
-    tabsContainer.appendChild(btn);
-  });
 }
 
 function initGanttTabs() {
@@ -1136,6 +1124,68 @@ function initGanttTabs() {
     };
     tabsContainer.appendChild(btn);
   });
+}
+
+function renderMasterMachinesTable() {
+  const tabsContainer = document.getElementById('masterMachineTabs');
+  tabsContainer.innerHTML = '';
+  const tabs = [
+    { id: 'VMC', label: '25 VMCs' },
+    { id: 'SG', label: 'Surface Grinding' },
+    { id: 'WC', label: 'Wire Cut' },
+    { id: 'DRO', label: 'DRO' },
+    { id: 'OTHER', label: 'Other Fleet' }
+  ];
+
+  tabs.forEach(t => {
+    let btn = document.createElement('button');
+    btn.className = `tab-btn ${t.id === activeMasterMachineGroup ? 'active' : ''}`;
+    btn.innerText = t.label;
+    btn.type = 'button';
+    btn.onclick = () => {
+      activeMasterMachineGroup = t.id;
+      renderMasterMachinesTable();
+    };
+    tabsContainer.appendChild(btn);
+  });
+
+  const tbody = document.getElementById('masterMachineTableBody');
+  tbody.innerHTML = '';
+
+  let filtered = ALL_MACHINES.filter(m => m.group === activeMasterMachineGroup);
+
+  filtered.forEach(m => {
+    let isBD = machineStatus[m.id] === 'BREAKDOWN';
+    let row = document.createElement('tr');
+    row.innerHTML = `
+      <td><strong>${m.id}</strong></td>
+      <td>${m.group}</td>
+      <td><input type="text" value="${m.make}" onchange="updateMachineSpec('${m.id}', 'make', this.value)" style="border:1px solid #cbd5e1; padding:3px 6px;"></td>
+      <td><input type="text" value="${m.model}" onchange="updateMachineSpec('${m.id}', 'model', this.value)" style="border:1px solid #cbd5e1; padding:3px 6px;"></td>
+      <td><input type="text" value="${m.controller}" onchange="updateMachineSpec('${m.id}', 'controller', this.value)" style="border:1px solid #cbd5e1; padding:3px 6px;"></td>
+      <td style="text-align:center;"><input type="text" value="${m.year}" onchange="updateMachineSpec('${m.id}', 'year', this.value)" style="width:70px; text-align:center; border:1px solid #cbd5e1; padding:3px 6px;"></td>
+      <td style="text-align:center;">
+        <span class="badge-status ${isBD ? 'badge-delayed' : 'badge-completed'}">${isBD ? 'BREAKDOWN' : 'ONLINE'}</span>
+      </td>
+      <td style="text-align:center;">
+        <button class="btn-action ${isBD ? 'btn-done' : 'btn-del'}" onclick="toggleMachineBreakdownMaster('${m.id}')">
+          ${isBD ? 'Restore Machine' : 'Mark Breakdown'}
+        </button>
+      </td>
+    `;
+    tbody.appendChild(row);
+  });
+}
+
+function updateMachineSpec(mId, field, val) {
+  let machine = ALL_MACHINES.find(m => m.id === mId);
+  if (machine) machine[field] = val;
+}
+
+function toggleMachineBreakdownMaster(mId) {
+  machineStatus[mId] = (machineStatus[mId] === 'ACTIVE') ? 'BREAKDOWN' : 'ACTIVE';
+  renderMasterMachinesTable();
+  recalculateAndRender();
 }
 
 function advanceTimeWithBreaks(startTime, durationMinutes, pattern) {
@@ -1248,11 +1298,6 @@ function formatDuration(mins) {
   if (h > 0 && m > 0) return `${h}h ${m}m`;
   if (h > 0) return `${h} hrs`;
   return `${m} min`;
-}
-
-function toggleMachineBreakdown(mId) {
-  machineStatus[mId] = (machineStatus[mId] === 'ACTIVE') ? 'BREAKDOWN' : 'ACTIVE';
-  recalculateAndRender();
 }
 
 async function setPieceStatus(jobId, pieceNo, newStatus) {
@@ -1458,24 +1503,7 @@ function recalculateAndRender() {
   let breakdownCount = Object.values(machineStatus).filter(s => s === 'BREAKDOWN').length;
   document.getElementById('fleetHealthCount').innerText = `${ALL_MACHINES.length - breakdownCount} / ${ALL_MACHINES.length} Online`;
   document.getElementById('breakdownCount').innerText = `${breakdownCount} in Breakdown`;
-
-  const machineGrid = document.getElementById('machineGrid');
-  machineGrid.innerHTML = '';
-  const currentTabMachines = ALL_MACHINES.filter(m => m.group === activeFleetTab);
-
-  currentTabMachines.forEach(m => {
-    let dt = machineTimes[m.id] || baseDate;
-    let isBD = machineStatus[m.id] === 'BREAKDOWN';
-    machineGrid.innerHTML += `
-      <div class="machine-card ${isBD ? 'is-breakdown' : ''}">
-        <b>${m.id}</b>
-        <div style="font-size: 9px; color: var(--text-muted); margin: 2px 0;">${isBD ? '⚠️ DOWN' : 'Free: ' + dt.getHours() + ':' + String(dt.getMinutes()).padStart(2, '0')}</div>
-        <button class="btn-action ${isBD ? 'btn-done' : 'btn-del'}" onclick="toggleMachineBreakdown('${m.id}')" style="font-size: 9px;">
-          ${isBD ? 'Restore' : 'Breakdown'}
-        </button>
-      </div>
-    `;
-  });
+  document.getElementById('homeFleetVal').innerText = `${ALL_MACHINES.length - breakdownCount} / ${ALL_MACHINES.length}`;
 
   renderLiveGantt(ganttData);
   renderAutomatedOeeTable();
@@ -1786,6 +1814,46 @@ function renderAutomatedOeeTable() {
   document.getElementById('avgQualVal').innerText = `${(sumQual / divFactor).toFixed(1)}%`;
 }
 
+// Universal Excel Export
+function exportToExcel(tableId, filename) {
+  const table = document.getElementById(tableId);
+  const wb = XLSX.utils.book_new();
+  const cloneTable = table.cloneNode(true);
+  cloneTable.querySelectorAll('.no-print').forEach(el => el.remove());
+  
+  cloneTable.querySelectorAll('.inline-remarks, input').forEach(inp => {
+    const span = document.createElement('span');
+    span.innerText = inp.value || inp.innerText;
+    inp.parentNode.replaceChild(span, inp);
+  });
+
+  const ws = XLSX.utils.table_to_sheet(cloneTable);
+  XLSX.utils.book_append_sheet(wb, ws, "ERP Data");
+  XLSX.writeFile(wb, filename);
+}
+
+// Universal File Import
+function importDataFromFile(event, type) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const data = new Uint8Array(e.target.result);
+    const workbook = XLSX.read(data, { type: 'array' });
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+    const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+    if (json.length > 1) {
+      alert(`Successfully imported ${json.length - 1} rows into ${type} module!`);
+    } else {
+      alert("The uploaded file appears empty or formatted incorrectly.");
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
 document.getElementById('jobForm').addEventListener('submit', async function(e) {
   e.preventDefault();
 
@@ -1928,28 +1996,11 @@ function resetForm() {
   document.querySelectorAll('input[name="selectedMachines"]').forEach(cb => cb.checked = false);
 }
 
-function exportToExcel() {
-  const table = document.getElementById("outputPlan");
-  const wb = XLSX.utils.book_new();
-  const cloneTable = table.cloneNode(true);
-  cloneTable.querySelectorAll('.no-print').forEach(el => el.remove());
-  
-  cloneTable.querySelectorAll('.inline-remarks').forEach(inp => {
-    const span = document.createElement('span');
-    span.innerText = inp.value;
-    inp.parentNode.replaceChild(span, inp);
-  });
-
-  const ws = XLSX.utils.table_to_sheet(cloneTable);
-  XLSX.utils.book_append_sheet(wb, ws, "Cloud MES Plan");
-  XLSX.writeFile(wb, `Production_ERP_Suite_${new Date().toISOString().slice(0, 10)}.xlsx`);
-}
-
 renderFilteredMachines();
-initFleetTabs();
 initGanttTabs();
 updateShiftSummaryHeaders();
 onJobShiftPatternChanged();
+renderMasterMachinesTable();
 if (currentUser) fetchCloudJobs();
 </script>
 
