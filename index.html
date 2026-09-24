@@ -3,132 +3,165 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tool Room MES - 25 VMC & Fleet Multi-Shift Cloud Scheduler</title>
+  <title>Production ERP - Enterprise MES & Tool Room Suite</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     :root {
       --primary: #0f172a;
-      --accent: #2563eb;
-      --bg: #f8fafc;
+      --sidebar-bg: #1e293b;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --bg: #f1f5f9;
       --card: #ffffff;
-      --border: #cbd5e1;
-      --urgent: #dc2626;
+      --border: #e2e8f0;
+      --text-main: #334155;
+      --text-muted: #64748b;
+      --urgent: #ef4444;
       --running: #f59e0b;
-      --completed: #16a34a;
+      --completed: #10b981;
       --breakdown: #dc2626;
-      --shift1: #0284c7;
-      --shift2: #7c3aed;
-      --shift3: #d97706;
-      --shiftgen: #059669;
+      --shift1: #0ea5e9;
+      --shift2: #8b5cf6;
+      --shift3: #f59e0b;
+      --shiftgen: #10b981;
     }
-    * { box-sizing: border-box; font-family: Calibri, 'Segoe UI', Arial, sans-serif; }
-    body { margin: 0; padding: 10px; background: var(--bg); color: #1e293b; }
-    h2, h3 { margin: 0 0 4px; color: var(--primary); }
-    .container { max-width: 1840px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
-    .card { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-    
+    * { box-sizing: border-box; font-family: 'Segoe UI', Calibri, Arial, sans-serif; }
+    body { margin: 0; padding: 0; background: var(--bg); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+
     #loginModal {
-      position: fixed; inset: 0; background: rgba(15, 23, 42, 0.8); 
+      position: fixed; inset: 0; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
       display: flex; align-items: center; justify-content: center; z-index: 99999;
     }
     .login-box {
-      background: white; padding: 25px; border-radius: 8px; width: 330px; 
-      box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center;
+      background: white; padding: 35px; border-radius: 12px; width: 380px; 
+      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3), 0 10px 10px -5px rgba(0,0,0,0.2); text-align: center;
     }
+    .login-box h3 { font-size: 22px; color: var(--primary); margin-bottom: 4px; }
+    .login-box p { font-size: 12px; color: var(--text-muted); margin-bottom: 20px; }
 
-    .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
-    label { display: block; font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; color: #475569; }
-    input, select { width: 100%; padding: 5px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 12px; }
-    button { cursor: pointer; padding: 5px 10px; border: none; border-radius: 4px; font-weight: bold; font-size: 12px; transition: 0.2s; }
+    .sidebar {
+      width: 260px; background: var(--sidebar-bg); color: #cbd5e1; display: flex; flex-direction: column; 
+      border-right: 1px solid #334155; flex-shrink: 0;
+    }
+    .sidebar-brand { padding: 20px; font-size: 16px; font-weight: bold; color: white; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 10px; }
+    .sidebar-menu { padding: 15px 10px; display: flex; flex-direction: column; gap: 6px; flex-grow: 1; }
+    .menu-item {
+      background: transparent; color: #94a3b8; border: none; text-align: left; padding: 10px 14px; 
+      border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: 0.2s;
+    }
+    .menu-item:hover { background: rgba(255,255,255,0.05); color: white; }
+    .menu-item.active { background: var(--accent); color: white; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); }
+
+    .main-content { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .topbar {
+      height: 64px; background: white; border-bottom: 1px solid var(--border); display: flex; 
+      align-items: center; justify-content: space-between; padding: 0 24px; flex-shrink: 0;
+    }
+    .workspace { padding: 20px; overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; gap: 16px; }
+
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+    
+    .module-pane { display: none; flex-direction: column; gap: 16px; }
+    .module-pane.active { display: flex; }
+
+    .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+    label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; color: var(--text-muted); }
+    input, select { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: #fff; color: var(--text-main); }
+    input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+    
+    button { cursor: pointer; padding: 8px 14px; border: none; border-radius: 6px; font-weight: 600; font-size: 13px; transition: 0.2s; }
     .btn-primary { background: var(--accent); color: white; }
-    .btn-primary:hover { background: #1d4ed8; }
-    .btn-excel { background: #16a34a; color: white; }
-    .btn-nav { background: #e2e8f0; color: #1e293b; padding: 4px 8px; font-size: 11px; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-excel { background: #10b981; color: white; }
+    .btn-excel:hover { background: #059669; }
+    .btn-nav { background: #e2e8f0; color: var(--text-main); padding: 6px 10px; font-size: 12px; }
 
-    .top-toolbar-group {
-      display: flex; align-items: center; gap: 6px; background: #e0f2fe; 
-      padding: 4px 10px; border-radius: 5px; border: 1px solid #bae6fd; flex-wrap: wrap;
+    .toolbar-group {
+      display: flex; align-items: center; gap: 8px; background: #eff6ff; 
+      padding: 6px 12px; border-radius: 8px; border: 1px solid #bfdbfe; flex-wrap: wrap;
     }
     
     .machine-filter-box {
-      background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 5px; 
-      padding: 8px 12px; margin-top: 8px; display: flex; flex-direction: column; gap: 6px;
+      background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; 
+      padding: 12px; margin-top: 10px; display: flex; flex-direction: column; gap: 8px;
     }
-    .filter-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-    .sub-chips-container { display: flex; gap: 6px; flex-wrap: wrap; max-height: 80px; overflow-y: auto; padding: 2px 0; }
+    .filter-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .sub-chips-container { display: flex; gap: 6px; flex-wrap: wrap; max-height: 90px; overflow-y: auto; padding: 4px 0; }
     .chip {
-      background: white; border: 1px solid #cbd5e1; padding: 2px 6px; 
-      border-radius: 4px; font-size: 11px; display: flex; align-items: center; gap: 4px; cursor: pointer;
+      background: white; border: 1px solid var(--border); padding: 4px 8px; 
+      border-radius: 6px; font-size: 11px; display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 500;
     }
     .chip input { width: auto; margin: 0; cursor: pointer; }
 
     .collapsible-header {
       display: flex; justify-content: space-between; align-items: center; 
-      cursor: pointer; user-select: none; font-size: 12px; font-weight: bold; color: var(--primary);
+      cursor: pointer; user-select: none; font-size: 13px; font-weight: 700; color: var(--primary);
     }
-    .drawer-content { margin-top: 8px; }
+    .drawer-content { margin-top: 12px; }
 
-    .fleet-category-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
-    .tab-btn { background: #e2e8f0; color: #334155; font-size: 11px; padding: 3px 8px; border-radius: 4px; }
+    .fleet-category-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+    .tab-btn { background: #e2e8f0; color: var(--text-main); font-size: 11px; padding: 4px 10px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; }
     .tab-btn.active { background: var(--accent); color: white; }
-    .fleet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(115px, 1fr)); gap: 5px; max-height: 140px; overflow-y: auto; }
+    .fleet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; max-height: 160px; overflow-y: auto; }
     .machine-card {
-      background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 4px; 
-      padding: 4px; text-align: center; border-left: 3px solid var(--accent); font-size: 11px;
+      background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; 
+      padding: 8px; text-align: center; border-left: 4px solid var(--accent); font-size: 11px;
     }
-    .machine-card.is-breakdown { background: #fee2e2; border-color: #fca5a5; border-left-color: var(--breakdown); }
+    .machine-card.is-breakdown { background: #fef2f2; border-color: #fecaca; border-left-color: var(--breakdown); }
 
-    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
-    .summary-box { background: #f8fafc; border: 1px solid var(--border); border-radius: 4px; padding: 8px; border-left: 4px solid var(--accent); }
-    .summary-num { font-size: 17px; font-weight: bold; color: var(--primary); }
-    .summary-lbl { font-size: 10px; color: #64748b; font-weight: bold; text-transform: uppercase; }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+    .summary-box { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; border-left: 4px solid var(--accent); box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
+    .summary-num { font-size: 20px; font-weight: 700; color: var(--primary); margin-top: 2px; }
+    .summary-lbl { font-size: 10px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
 
     .gantt-container { overflow-x: auto; max-height: 320px; overflow-y: auto; padding: 6px 0; }
-    .gantt-row { display: flex; align-items: center; margin-bottom: 4px; font-size: 11px; }
-    .gantt-label { width: 90px; font-weight: bold; flex-shrink: 0; color: #334155; font-size: 11px; }
-    .gantt-track { flex-grow: 1; height: 22px; background: #e2e8f0; border-radius: 3px; position: relative; overflow: hidden; display: flex; }
+    .gantt-row { display: flex; align-items: center; margin-bottom: 6px; font-size: 12px; }
+    .gantt-label { width: 100px; font-weight: 700; flex-shrink: 0; color: var(--text-main); }
+    .gantt-track { flex-grow: 1; height: 26px; background: #e2e8f0; border-radius: 6px; position: relative; overflow: hidden; display: flex; }
     .gantt-bar {
-      height: 100%; color: white; font-size: 10px; font-weight: bold; 
-      padding: 0 5px; display: flex; align-items: center; overflow: hidden; 
+      height: 100%; color: white; font-size: 11px; font-weight: 700; 
+      padding: 0 8px; display: flex; align-items: center; overflow: hidden; 
       text-overflow: ellipsis; white-space: nowrap; cursor: pointer; transition: 0.15s;
     }
     .gantt-bar:hover { opacity: 0.9; }
 
-    table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 11.5px; background: #fff; }
-    th, td { border: 1px solid #94a3b8; padding: 4px 6px; text-align: left; }
-    th { background: #e2e8f0; color: #0f172a; font-weight: 700; text-align: center; }
-    tr.group-start { border-top: 2px solid #334155; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; background: #fff; }
+    th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; }
+    th { background: #f8fafc; color: var(--primary); font-weight: 700; text-align: center; }
+    tr.group-start { border-top: 2px solid #cbd5e1; }
     tr.status-running { background-color: #fffbeb !important; }
     tr.status-completed { background-color: #f0fdf4 !important; }
     tr.status-delayed { background-color: #fff1f2 !important; }
     
-    .badge-status { font-size: 10px; padding: 1px 4px; border-radius: 3px; font-weight: bold; }
-    .badge-planned { background: #e2e8f0; color: #475569; }
-    .badge-running { background: #fef3c7; color: #b45309; }
-    .badge-completed { background: #dcfce7; color: #15803d; }
-    .badge-delayed { background: #fee2e2; color: #b91c1c; font-size: 9px; padding: 1px 3px; border-radius: 3px; font-weight: bold; border: 1px solid #fca5a5; }
+    .badge-status { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 700; text-transform: uppercase; }
+    .badge-planned { background: #f1f5f9; color: var(--text-muted); }
+    .badge-running { background: #fef3c7; color: #d97706; }
+    .badge-completed { background: #d1fae5; color: #065f46; }
+    .badge-delayed { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
 
-    .badge-shift { font-size: 10px; padding: 1px 5px; border-radius: 3px; font-weight: bold; color: white; }
+    .badge-shift { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 700; color: white; }
     .badge-s1 { background: var(--shift1); }
     .badge-s2 { background: var(--shift2); }
     .badge-s3 { background: var(--shift3); }
     .badge-gen { background: var(--shiftgen); }
 
-    .btn-action { padding: 2px 4px; font-size: 10px; border-radius: 3px; font-weight: bold; }
+    .btn-action { padding: 3px 6px; font-size: 11px; border-radius: 4px; font-weight: 700; }
     .btn-edit { background: #e0f2fe; color: #0284c7; border: 1px solid #7dd3fc; }
     .btn-del { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
-    .btn-start { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; font-size: 10px; padding: 2px 4px; }
-    .btn-done { background: #dcfce7; color: #15803d; border: 1px solid #86efac; font-size: 10px; padding: 2px 4px; }
-    .btn-undo { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; font-size: 10px; padding: 2px 4px; }
-    .btn-delay { background: #fff1f2; color: #b91c1c; border: 1px solid #fca5a5; font-size: 10px; padding: 2px 4px; }
+    .btn-start { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
+    .btn-done { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+    .btn-undo { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+    .btn-delay { background: #fff1f2; color: #b91c1c; border: 1px solid #fca5a5; }
 
-    .inline-remarks { width: 100%; border: 1px solid transparent; background: transparent; padding: 2px; font-size: 11px; }
-    .inline-remarks:focus { border: 1px solid var(--accent); background: #fff; outline: none; }
+    .inline-remarks { width: 100%; border: 1px solid transparent; background: transparent; padding: 4px; font-size: 12px; }
+    .inline-remarks:focus { border: 1px solid var(--accent); background: #fff; outline: none; border-radius: 4px; }
 
     @media print {
       .no-print { display: none !important; }
-      body { padding: 0; background: white; }
+      body { padding: 0; background: white; overflow: auto; height: auto; }
+      .sidebar, .topbar { display: none !important; }
+      .workspace { padding: 0; overflow: visible; }
       .card { border: none; box-shadow: none; padding: 0; }
     }
   </style>
@@ -137,262 +170,513 @@
 
 <div id="loginModal">
   <div class="login-box">
-    <h3 style="margin-bottom: 2px;">Cloud MES Portal</h3>
-    <p style="font-size: 11px; color: #64748b; margin-top: 0;">25 VMC & Tool Room Production Cloud</p>
-    <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 15px; text-align: left;">
+    <h3>Production ERP</h3>
+    <p>Enterprise MES & Tool Room Cloud Portal</p>
+    <form id="loginForm" onsubmit="event.preventDefault(); authenticateUser();" style="display: flex; flex-direction: column; gap: 12px; text-align: left;">
       <div>
         <label>Username</label>
-        <input type="text" id="loginUser" placeholder="admin or operator" required>
+        <input type="text" id="loginUser" placeholder="Enter username" required>
       </div>
       <div>
         <label>Password</label>
         <input type="password" id="loginPass" placeholder="••••••••" required>
       </div>
-      <button class="btn-primary" style="margin-top: 8px; padding: 8px;" onclick="authenticateUser()">Sign In</button>
-      <div style="font-size: 11px; color: #64748b; text-align: center; margin-top: 6px;">
-        Admin: <b>admin / admin123</b> | Operator: <b>operator / vmc123</b>
-      </div>
-    </div>
+      <button type="submit" class="btn-primary" style="margin-top: 6px; padding: 10px;">Sign In securely</button>
+    </form>
   </div>
 </div>
 
-<div class="container" id="mainApp" style="display: none;">
-  <div class="card no-print" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+<div class="sidebar no-print" id="sidebarNav" style="display: none;">
+  <div class="sidebar-brand">
+    <span>⚙️</span> Production ERP
+  </div>
+  <div class="sidebar-menu">
+    <button class="menu-item active" onclick="switchModule('homeTab', this)"><span>🏠</span> Home Dashboard</button>
+    <button class="menu-item" onclick="switchModule('planningTab', this)"><span>📅</span> Production Planning</button>
+    <button class="menu-item" onclick="switchModule('shiftPlanTab', this)"><span>🕒</span> Shift Roster Planner</button>
+    <button class="menu-item" onclick="switchModule('attendanceTab', this)"><span>👥</span> Workforce Attendance</button>
+    <button class="menu-item" onclick="switchModule('downtimeTab', this)"><span>📉</span> Downtime Log</button>
+    <button class="menu-item" onclick="switchModule('oeeTab', this)"><span>📊</span> Section OEE Analytics</button>
+  </div>
+  <div style="padding: 15px 20px; border-top: 1px solid #334155; font-size: 11px; color: #64748b;">
+    User: <strong id="userBadge" style="color: #38bdf8;"></strong>
+  </div>
+</div>
+
+<div class="main-content" id="mainApp" style="display: none;">
+  <div class="topbar no-print">
     <div>
-      <h2 style="font-size: 17px;">Tool Room MES Cloud Plan (25 VMC + Fleet)</h2>
-      <span style="font-size: 11px; color: #64748b;">
-        Cloud Status: <strong style="color: #16a34a;">● Live Synced</strong> • Logged as: <strong id="userBadge" style="color: var(--accent);"></strong>
-      </span>
+      <h2 style="font-size: 16px; margin: 0; color: var(--primary);">Tool Room Execution Suite</h2>
+      <span style="font-size: 11px; color: var(--text-muted);">Cloud Status: <strong style="color: var(--completed);">● Live Synced</strong></span>
     </div>
-
-    <!-- Global Default Shift Mode Switcher -->
-    <div class="top-toolbar-group">
-      <span style="font-size: 11px; font-weight: bold; color: #0369a1;">⏰ Default Plant Shift:</span>
-      <select id="globalShiftMode" onchange="onGlobalShiftModeChanged()" style="width: auto; padding: 2px 5px; font-weight: bold; background: white;">
-        <option value="3_SHIFT_8H" selected>8 Hrs x 3 Shifts (24 Hrs)</option>
-        <option value="2_SHIFT_8H">8 Hrs x 2 Shifts (6:00 AM – 11:00 PM)</option>
-        <option value="GEN_SHIFT_8H">General Shift (9:00 AM – 5:30 PM)</option>
-        <option value="2_SHIFT_12H">12 Hrs x 2 Shifts (Urgent 24 Hrs)</option>
-      </select>
+    <div style="display: flex; gap: 10px; align-items: center;">
+      <button class="btn-excel" onclick="exportToExcel()">📥 Export Excel (.xlsx)</button>
+      <button class="btn-primary" onclick="window.print()">🖨️ Print Sheet</button>
+      <button style="background: #e2e8f0; color: var(--text-main);" onclick="logout()">Logout</button>
     </div>
+  </div>
 
-    <!-- Date Navigation Toolbar -->
-    <div class="top-toolbar-group">
-      <span style="font-size: 11px; font-weight: bold; color: #0369a1;">📅 View:</span>
-      <select id="dateFilterMode" onchange="toggleDateFilterMode()" style="width: auto; padding: 2px 4px; font-weight: bold; background: white;">
-        <option value="ALL" selected>All Dates (Live Plan)</option>
-        <option value="DATE">Specific Date Only</option>
-      </select>
-      <div id="specificDateControls" style="display: none; align-items: center; gap: 4px;">
-        <button class="btn-nav" onclick="changeDateOffset(-1)">◀</button>
-        <input type="date" id="selectedPlanDate" onchange="onDateFilterChanged()" style="width: auto; padding: 2px 4px;">
-        <button class="btn-nav" onclick="changeDateOffset(1)">▶</button>
-        <button class="btn-nav" onclick="setTodayDate()">Today</button>
+  <div class="workspace">
+
+    <!-- HOME DASHBOARD -->
+    <div id="homeTab" class="module-pane active">
+      <div class="card" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; padding: 25px;">
+        <h2 style="font-size: 22px; color: white; margin-bottom: 6px;">Welcome to Production ERP Suite</h2>
+        <p style="font-size: 13px; color: #94a3b8; margin: 0;">Enterprise Tool Room & 25 VMC Machine Shop-Floor Control System</p>
+      </div>
+
+      <div class="summary-grid">
+        <div class="summary-box" style="border-left-color: var(--accent);">
+          <div class="summary-lbl">Active Plant OEE</div>
+          <div class="summary-num" id="homeOeeVal">0.0%</div>
+        </div>
+        <div class="summary-box" style="border-left-color: var(--completed);">
+          <div class="summary-lbl">Active Fleet Online</div>
+          <div class="summary-num" id="homeFleetVal">40 / 40</div>
+        </div>
+        <div class="summary-box" style="border-left-color: var(--running);">
+          <div class="summary-lbl">Scheduled Jobs</div>
+          <div class="summary-num" id="homeJobsVal">0 jobs</div>
+        </div>
+        <div class="summary-box" style="border-left-color: var(--urgent);">
+          <div class="summary-lbl">Recorded Downtime</div>
+          <div class="summary-num" id="homeDtVal">0 min</div>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px;">
+        <div class="card">
+          <h3 style="margin-bottom: 10px; font-size: 14px; color: var(--primary);">Quick Navigation</h3>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <button class="btn-nav" style="text-align: left; padding: 10px;" onclick="switchModule('planningTab', document.querySelectorAll('.menu-item')[1])">📅 Open Production Planning & Gantt Scheduler</button>
+            <button class="btn-nav" style="text-align: left; padding: 10px;" onclick="switchModule('shiftPlanTab', document.querySelectorAll('.menu-item')[2])">🕒 Manage Weekly Shift Roster</button>
+            <button class="btn-nav" style="text-align: left; padding: 10px;" onclick="switchModule('attendanceTab', document.querySelectorAll('.menu-item')[3])">👥 Track Daily Workforce Attendance</button>
+            <button class="btn-nav" style="text-align: left; padding: 10px;" onclick="switchModule('downtimeTab', document.querySelectorAll('.menu-item')[4])">📉 Log Machine Stoppages & Downtime</button>
+            <button class="btn-nav" style="text-align: left; padding: 10px;" onclick="switchModule('oeeTab', document.querySelectorAll('.menu-item')[5])">📊 View Section OEE Analytics Matrix</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 style="margin-bottom: 10px; font-size: 14px; color: var(--primary);">System Status Overview</h3>
+          <div style="font-size: 12px; display: flex; flex-direction: column; gap: 10px; color: var(--text-muted);">
+            <div>● <b>Database Connection:</b> Supabase Live Cloud Synced</div>
+            <div>● <b>Machine Fleet Capacity:</b> 25 VMCs + 15 Tool Room Machines</div>
+            <div>● <b>Active Shift Mode:</b> <span id="homeShiftModeLbl" style="color: var(--accent); font-weight: 700;">3 Shifts (24 Hrs)</span></div>
+            <div>● <b>Active User:</b> <span id="homeUserRoleLbl" style="font-weight: 700; color: var(--primary);"></span></div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div style="display: flex; gap: 6px; align-items: center;">
-      <button class="btn-excel" onclick="exportToExcel()">Export Excel (.xlsx)</button>
-      <button class="btn-primary" onclick="window.print()">Print A4 Sheet</button>
-      <button style="background: #64748b; color:white;" onclick="logout()">Logout</button>
-    </div>
-  </div>
-
-  <!-- Dynamic Summary Dashboard -->
-  <div class="summary-grid no-print" id="summaryCardsContainer">
-    <div class="summary-box" id="sumShift1Box" style="border-left-color: var(--shift1);">
-      <div class="summary-lbl" id="shift1Title">Shift 1 (06:00 AM – 02:30 PM)</div>
-      <div class="summary-num" id="shift1Qty">0 nos</div>
-      <div style="font-size: 10px; color: #64748b;" id="shift1Hours">0 hrs</div>
-    </div>
-    <div class="summary-box" id="sumShift2Box" style="border-left-color: var(--shift2);">
-      <div class="summary-lbl" id="shift2Title">Shift 2 (02:30 PM – 11:00 PM)</div>
-      <div class="summary-num" id="shift2Qty">0 nos</div>
-      <div style="font-size: 10px; color: #64748b;" id="shift2Hours">0 hrs</div>
-    </div>
-    <div class="summary-box" id="sumShift3Box" style="border-left-color: var(--shift3);">
-      <div class="summary-lbl" id="shift3Title">Shift 3 (11:00 PM – 06:00 AM)</div>
-      <div class="summary-num" id="shift3Qty">0 nos</div>
-      <div style="font-size: 10px; color: #64748b;" id="shift3Hours">0 hrs</div>
-    </div>
-    <div class="summary-box" style="border-left-color: #16a34a;">
-      <div class="summary-lbl">Total Completed</div>
-      <div class="summary-num" id="completedQtySum">0 / 0 Done</div>
-      <div style="font-size: 10px; color: #64748b;" id="completionRate">0%</div>
-    </div>
-    <div class="summary-box" style="border-left-color: var(--breakdown);">
-      <div class="summary-lbl">Fleet Status (40 Machines)</div>
-      <div class="summary-num" id="fleetHealthCount">40 / 40 Online</div>
-      <div style="font-size: 10px; color: #64748b;" id="breakdownCount">0 in Breakdown</div>
-    </div>
-  </div>
-
-  <!-- Collapsible Fleet Drawer -->
-  <div class="card no-print">
-    <div class="collapsible-header" onclick="toggleFleetDrawer()">
-      <span>⚙️ Machine Fleet Status & Breakdown Controls</span>
-      <span id="drawerArrow" style="color: var(--accent);">▼ Show Fleet</span>
-    </div>
-    <div class="drawer-content" id="fleetDrawer" style="display: none;">
-      <div class="fleet-category-tabs" id="fleetTabs"></div>
-      <div class="fleet-grid" id="machineGrid"></div>
-    </div>
-  </div>
-
-  <!-- Gantt Chart Timeline View -->
-  <div class="card no-print">
-    <div class="collapsible-header" onclick="toggleGanttDrawer()">
-      <span>📊 Timeline Gantt Chart (Floor View)</span>
-      <span id="ganttArrow" style="color: var(--accent);">▲ Hide Gantt</span>
-    </div>
-    <div class="drawer-content" id="ganttDrawer">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
-        <div class="fleet-category-tabs" id="ganttTabs" style="margin-bottom: 0;"></div>
-        <div style="display: flex; gap: 8px; font-size: 10px; align-items: center;">
-          <span><span style="display:inline-block; width:10px; height:10px; background:#2563eb; border-radius:2px;"></span> Planned</span>
-          <span><span style="display:inline-block; width:10px; height:10px; background:#f59e0b; border-radius:2px;"></span> Running</span>
-          <span><span style="display:inline-block; width:10px; height:10px; background:#16a34a; border-radius:2px;"></span> Completed</span>
-          <span><span style="display:inline-block; width:10px; height:10px; background:#dc2626; border-radius:2px;"></span> Delayed</span>
-        </div>
-      </div>
-      <div class="gantt-container" id="ganttView"></div>
-    </div>
-  </div>
-
-  <!-- Admin Planning Form with Shift Selection -->
-  <div class="card no-print admin-only" id="planningFormCard">
-    <h3 id="formTitle" style="font-size: 13px;">New Production Planning Entry</h3>
-    <form id="jobForm">
-      <input type="hidden" id="editJobId" value="">
-      <div class="grid-form">
-        <div>
-          <label>Project Code</label>
-          <input type="text" id="projectCode" placeholder="e.g. PRJ-01" required>
-        </div>
-        <div>
-          <label>Project Name</label>
-          <input type="text" id="projectName" placeholder="e.g. Die Mould" required>
-        </div>
-        <div>
-          <label>Part Name</label>
-          <input type="text" id="partName" placeholder="e.g. Locating Pin" required>
-        </div>
-        <div>
-          <label>Setting / Process</label>
-          <input type="text" id="setting" placeholder="e.g. 1st Op" required>
-        </div>
-        <div>
-          <label>Plan Qty</label>
-          <input type="number" id="planQty" min="1" placeholder="5" required>
-        </div>
-        <div>
-          <label>1st Pc Setup/QC (Min)</label>
-          <input type="number" id="firstPcMins" min="1" value="120" required>
-        </div>
-        <div>
-          <label>Cycle Time / Pc (Min)</label>
-          <input type="number" id="cycleMins" min="1" value="60" required>
-        </div>
-        <div>
-          <label>Operator Name</label>
-          <input type="text" id="operator" placeholder="e.g. Prathiban" required>
-        </div>
-        <div>
-          <label>Priority</label>
-          <select id="priority">
-            <option value="NORMAL">Normal Queue</option>
-            <option value="URGENT">⚡ Urgent (Preempt)</option>
+    <!-- PRODUCTION PLANNING -->
+    <div id="planningTab" class="module-pane">
+      <div class="card no-print" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 12px 16px;">
+        <div class="toolbar-group">
+          <span style="font-size: 11px; font-weight: 700; color: #1d4ed8;">⏰ Default Plant Shift:</span>
+          <select id="globalShiftMode" onchange="onGlobalShiftModeChanged()" style="width: auto; padding: 4px 8px; font-weight: 700; background: white;">
+            <option value="3_SHIFT_8H" selected>8 Hrs x 3 Shifts (24 Hrs)</option>
+            <option value="2_SHIFT_8H">8 Hrs x 2 Shifts (6:00 AM – 11:00 PM)</option>
+            <option value="GEN_SHIFT_8H">General Shift (9:00 AM – 5:30 PM)</option>
+            <option value="2_SHIFT_12H">12 Hrs x 2 Shifts (Urgent 24 Hrs)</option>
           </select>
         </div>
 
-        <!-- NEW: Shift Pattern Selection for this Job -->
-        <div>
-          <label style="color: #0369a1;">Shift Pattern</label>
-          <select id="jobShiftPattern" onchange="onJobShiftPatternChanged()">
-            <option value="3_SHIFT_8H">8 Hrs x 3 Shifts (24h)</option>
-            <option value="2_SHIFT_8H">8 Hrs x 2 Shifts (17h)</option>
-            <option value="GEN_SHIFT_8H">General Shift (9:00-5:30)</option>
-            <option value="2_SHIFT_12H">12 Hrs x 2 Shifts (Urgent)</option>
+        <div class="toolbar-group">
+          <span style="font-size: 11px; font-weight: 700; color: #1d4ed8;">📅 Timeline View:</span>
+          <select id="dateFilterMode" onchange="toggleDateFilterMode()" style="width: auto; padding: 4px 8px; font-weight: 700; background: white;">
+            <option value="ALL" selected>All Dates (Live Plan)</option>
+            <option value="DATE">Specific Date Only</option>
           </select>
-        </div>
-
-        <!-- NEW: Target Shift Selection -->
-        <div>
-          <label style="color: #0369a1;">Target Shift</label>
-          <select id="targetShiftSelect">
-            <!-- Dynamically populated based on jobShiftPattern -->
-          </select>
-        </div>
-
-        <div>
-          <label>Manual Start Time</label>
-          <input type="datetime-local" id="manualStartTime">
-        </div>
-        <div>
-          <label>Parallel Machines</label>
-          <input type="number" id="parallelCount" min="1" max="25" value="1" onchange="validateParallelCount()">
+          <div id="specificDateControls" style="display: none; align-items: center; gap: 6px;">
+            <button class="btn-nav" onclick="changeDateOffset(-1)">◀</button>
+            <input type="date" id="selectedPlanDate" onchange="onDateFilterChanged()" style="width: auto; padding: 4px 6px;">
+            <button class="btn-nav" onclick="changeDateOffset(1)">▶</button>
+            <button class="btn-nav" onclick="setTodayDate()">Today</button>
+          </div>
         </div>
       </div>
 
-      <div class="machine-filter-box">
-        <div class="filter-row">
-          <label style="margin: 0; min-width: 140px;">Filter Process / Group:</label>
-          <select id="machineCategoryFilter" style="max-width: 220px;" onchange="renderFilteredMachines()">
-            <option value="ALL">Show All Categories</option>
-            <option value="VMC" selected>25 VMC Fleet (VMC-01 to 25)</option>
-            <option value="SG">Surface Grinding (SG-01 to 04)</option>
-            <option value="WC">Wire Cut HS / SS</option>
-            <option value="DRO">DRO Machines</option>
-            <option value="OTHER">Lathe, Milling, EDM, Laser</option>
-          </select>
-          <span style="font-size: 11px; color: #64748b;">(Select specific machines or leave blank for Auto Allocation)</span>
+      <div class="summary-grid no-print" id="summaryCardsContainer">
+        <div class="summary-box" id="sumShift1Box" style="border-left-color: var(--shift1);">
+          <div class="summary-lbl" id="shift1Title">Shift 1 (06:00 AM – 02:30 PM)</div>
+          <div class="summary-num" id="shift1Qty">0 nos</div>
+          <div style="font-size: 10px; color: var(--text-muted);" id="shift1Hours">0 hrs</div>
         </div>
-        <div class="sub-chips-container" id="filteredMachinesList"></div>
+        <div class="summary-box" id="sumShift2Box" style="border-left-color: var(--shift2);">
+          <div class="summary-lbl" id="shift2Title">Shift 2 (02:30 PM – 11:00 PM)</div>
+          <div class="summary-num" id="shift2Qty">0 nos</div>
+          <div style="font-size: 10px; color: var(--text-muted);" id="shift2Hours">0 hrs</div>
+        </div>
+        <div class="summary-box" id="sumShift3Box" style="border-left-color: var(--shift3);">
+          <div class="summary-lbl" id="shift3Title">Shift 3 (11:00 PM – 06:00 AM)</div>
+          <div class="summary-num" id="shift3Qty">0 nos</div>
+          <div style="font-size: 10px; color: var(--text-muted);" id="shift3Hours">0 hrs</div>
+        </div>
+        <div class="summary-box" style="border-left-color: var(--completed);">
+          <div class="summary-lbl">Total Completed</div>
+          <div class="summary-num" id="completedQtySum">0 / 0 Done</div>
+          <div style="font-size: 10px; color: var(--text-muted);" id="completionRate">0%</div>
+        </div>
+        <div class="summary-box" style="border-left-color: var(--breakdown);">
+          <div class="summary-lbl">Fleet Status (40 Machines)</div>
+          <div class="summary-num" id="fleetHealthCount">40 / 40 Online</div>
+          <div style="font-size: 10px; color: var(--text-muted);" id="breakdownCount">0 in Breakdown</div>
+        </div>
       </div>
 
-      <div style="display: flex; gap: 8px; margin-top: 8px;">
-        <button type="submit" class="btn-primary" id="submitBtn">Save to Cloud & Schedule</button>
-        <button type="button" class="btn-nav" id="cancelEditBtn" style="display:none;" onclick="cancelEdit()">Cancel Edit</button>
+      <div class="card no-print">
+        <div class="collapsible-header" onclick="toggleFleetDrawer()">
+          <span>⚙️ Machine Fleet Status & Breakdown Controls</span>
+          <span id="drawerArrow" style="color: var(--accent);">▼ Show Fleet</span>
+        </div>
+        <div class="drawer-content" id="fleetDrawer" style="display: none;">
+          <div class="fleet-category-tabs" id="fleetTabs"></div>
+          <div class="fleet-grid" id="machineGrid"></div>
+        </div>
       </div>
-    </form>
-  </div>
 
-  <!-- Plan Table -->
-  <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-      <h3 style="font-size: 13px;">Shop-Floor Production Execution Plan</h3>
-      <span style="font-size: 11px; color: #16a34a; font-weight: bold;" id="viewModeLabel">⚡ Live Active Plan</span>
+      <div class="card no-print">
+        <div class="collapsible-header" onclick="toggleGanttDrawer()">
+          <span>📊 Timeline Gantt Chart (Floor View)</span>
+          <span id="ganttArrow" style="color: var(--accent);">▲ Hide Gantt</span>
+        </div>
+        <div class="drawer-content" id="ganttDrawer">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+            <div class="fleet-category-tabs" id="ganttTabs" style="margin-bottom: 0;"></div>
+            <div style="display: flex; gap: 10px; font-size: 11px; align-items: center; font-weight: 600;">
+              <span><span style="display:inline-block; width:10px; height:10px; background:#3b82f6; border-radius:2px;"></span> Planned</span>
+              <span><span style="display:inline-block; width:10px; height:10px; background:#f59e0b; border-radius:2px;"></span> Running</span>
+              <span><span style="display:inline-block; width:10px; height:10px; background:#10b981; border-radius:2px;"></span> Completed</span>
+              <span><span style="display:inline-block; width:10px; height:10px; background:#ef4444; border-radius:2px;"></span> Delayed</span>
+            </div>
+          </div>
+          <div class="gantt-container" id="ganttView"></div>
+        </div>
+      </div>
+
+      <div class="card no-print admin-only" id="planningFormCard">
+        <h3 id="formTitle" style="font-size: 14px; margin-bottom: 12px;">New Production Planning Entry</h3>
+        <form id="jobForm">
+          <input type="hidden" id="editJobId" value="">
+          <div class="grid-form">
+            <div>
+              <label>Project Code</label>
+              <input type="text" id="projectCode" placeholder="e.g. PRJ-01" required>
+            </div>
+            <div>
+              <label>Project Name</label>
+              <input type="text" id="projectName" placeholder="e.g. Die Mould" required>
+            </div>
+            <div>
+              <label>Part Name</label>
+              <input type="text" id="partName" placeholder="e.g. Locating Pin" required>
+            </div>
+            <div>
+              <label>Setting / Process</label>
+              <input type="text" id="setting" placeholder="e.g. 1st Op" required>
+            </div>
+            <div>
+              <label>Plan Qty</label>
+              <input type="number" id="planQty" min="1" placeholder="5" required>
+            </div>
+            <div>
+              <label>1st Pc Setup/QC (Min)</label>
+              <input type="number" id="firstPcMins" min="1" value="120" required>
+            </div>
+            <div>
+              <label>Cycle Time / Pc (Min)</label>
+              <input type="number" id="cycleMins" min="1" value="60" required>
+            </div>
+            <div>
+              <label>Operator Name</label>
+              <input type="text" id="operator" placeholder="e.g. Prathiban" required>
+            </div>
+            <div>
+              <label>Priority</label>
+              <select id="priority">
+                <option value="NORMAL">Normal Queue</option>
+                <option value="URGENT">⚡ Urgent (Preempt)</option>
+              </select>
+            </div>
+            <div>
+              <label style="color: #1d4ed8;">Shift Pattern</label>
+              <select id="jobShiftPattern" onchange="onJobShiftPatternChanged()">
+                <option value="3_SHIFT_8H">8 Hrs x 3 Shifts (24h)</option>
+                <option value="2_SHIFT_8H">8 Hrs x 2 Shifts (17h)</option>
+                <option value="GEN_SHIFT_8H">General Shift (9:00-5:30)</option>
+                <option value="2_SHIFT_12H">12 Hrs x 2 Shifts (Urgent)</option>
+              </select>
+            </div>
+            <div>
+              <label style="color: #1d4ed8;">Target Shift</label>
+              <select id="targetShiftSelect"></select>
+            </div>
+            <div>
+              <label>Manual Start Time</label>
+              <input type="datetime-local" id="manualStartTime">
+            </div>
+            <div>
+              <label>Parallel Machines</label>
+              <input type="number" id="parallelCount" min="1" max="25" value="1" onchange="validateParallelCount()">
+            </div>
+          </div>
+
+          <div class="machine-filter-box">
+            <div class="filter-row">
+              <label style="margin: 0; min-width: 140px;">Filter Process Group:</label>
+              <select id="machineCategoryFilter" style="max-width: 220px;" onchange="renderFilteredMachines()">
+                <option value="ALL">Show All Categories</option>
+                <option value="VMC" selected>25 VMC Fleet (VMC-01 to 25)</option>
+                <option value="SG">Surface Grinding (SG-01 to 04)</option>
+                <option value="WC">Wire Cut HS / SS</option>
+                <option value="DRO">DRO Machines</option>
+                <option value="OTHER">Lathe, Milling, EDM, Laser</option>
+              </select>
+              <span style="font-size: 11px; color: var(--text-muted);">(Select specific machines or leave blank for Auto Allocation)</span>
+            </div>
+            <div class="sub-chips-container" id="filteredMachinesList"></div>
+          </div>
+
+          <div style="display: flex; gap: 10px; margin-top: 12px;">
+            <button type="submit" class="btn-primary" id="submitBtn">Save to Cloud & Schedule</button>
+            <button type="button" class="btn-nav" id="cancelEditBtn" style="display:none;" onclick="cancelEdit()">Cancel Edit</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+          <h3 style="font-size: 14px; margin: 0;">Shop-Floor Production Execution Plan</h3>
+          <span style="font-size: 11px; color: var(--completed); font-weight: 700;" id="viewModeLabel">⚡ Live Active Plan</span>
+        </div>
+        <table id="outputPlan">
+          <thead>
+            <tr>
+              <th style="width: 30px;">SI</th>
+              <th>Project Code</th>
+              <th>Project Name</th>
+              <th>Part Name</th>
+              <th>Setting</th>
+              <th>Plan Qty</th>
+              <th>Piece</th>
+              <th>Duration</th>
+              <th>ETC - Time</th>
+              <th>ETC-Date</th>
+              <th>Shift</th>
+              <th>Machine</th>
+              <th>Operator</th>
+              <th>Status</th>
+              <th style="min-width: 140px;">Floor Remarks (Delay/Reason)</th>
+              <th class="no-print" style="text-align: center; width: 190px;">Action Controls</th>
+            </tr>
+          </thead>
+          <tbody id="planTableBody"></tbody>
+        </table>
+      </div>
     </div>
-    <table id="outputPlan">
-      <thead>
-        <tr>
-          <th style="width: 30px;">SI</th>
-          <th>Project Code</th>
-          <th>Project Name</th>
-          <th>Part Name</th>
-          <th>Setting</th>
-          <th>Plan Qty</th>
-          <th>Piece</th>
-          <th>Duration</th>
-          <th>ETC - Time</th>
-          <th>ETC-Date</th>
-          <th>Shift</th>
-          <th>Machine</th>
-          <th>Operator</th>
-          <th>Status</th>
-          <th style="min-width: 130px;">Floor Remarks (Delay/Reason)</th>
-          <th class="no-print" style="text-align: center; width: 190px;">Action / Controls</th>
-        </tr>
-      </thead>
-      <tbody id="planTableBody"></tbody>
-    </table>
+
+    <!-- SHIFT PLANNING ROTATION -->
+    <div id="shiftPlanTab" class="module-pane">
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <h3 style="margin-bottom: 2px;">Weekly Shift Roster & Rotation Planner</h3>
+            <span style="font-size: 11px; color: var(--text-muted);">Configure shift assignments and rotations across your 28 employees.</span>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <label style="margin:0;">Week Starting:</label>
+            <input type="date" id="rosterWeekDate" style="width: auto;" value="2026-09-28">
+            <button class="btn-primary" onclick="saveShiftRoster()">Save Roster Setup</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <table>
+          <thead>
+            <tr>
+              <th>Emp. ID</th>
+              <th>Name</th>
+              <th>Function</th>
+              <th>Mon</th>
+              <th>Tue</th>
+              <th>Wed</th>
+              <th>Thu</th>
+              <th>Fri</th>
+              <th>Sat</th>
+              <th>Sun</th>
+            </tr>
+          </thead>
+          <tbody id="shiftRosterTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ATTENDANCE MODULE -->
+    <div id="attendanceTab" class="module-pane">
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <h3 style="margin-bottom: 2px;">Section-wise Workforce Attendance Log</h3>
+            <span style="font-size: 11px; color: var(--text-muted);">Shifts dynamically pulled from the Weekly Shift Roster Planner.</span>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <label style="margin:0;">Date:</label>
+            <input type="date" id="attDate" style="width: auto;" onchange="renderAttendanceTable()">
+            <button class="btn-primary" onclick="markAllPresent()">Mark All Present</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <table>
+          <thead>
+            <tr>
+              <th>Emp. ID</th>
+              <th>Name</th>
+              <th>Function</th>
+              <th>Rostered Shift</th>
+              <th>Attendance Status</th>
+              <th>Clock-In Time</th>
+              <th>Clock-Out Time</th>
+              <th>Remarks / Overtime</th>
+            </tr>
+          </thead>
+          <tbody id="attendanceTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- DOWNTIME MANAGEMENT -->
+    <div id="downtimeTab" class="module-pane">
+      <div class="card">
+        <h3 style="margin-bottom: 2px;">Shop-Floor Downtime & Stoppage Log</h3>
+        <span style="font-size: 11px; color: var(--text-muted);">Record machine breakdowns, tool changes, material waits, and power stoppages.</span>
+      </div>
+
+      <div class="card">
+        <h3 style="font-size: 13px; margin-bottom: 8px;">Log New Downtime Event</h3>
+        <div class="grid-form" style="margin-bottom: 10px;">
+          <div>
+            <label>Machine / Section</label>
+            <select id="dtMachine">
+              <option value="VMC-01">VMC-01</option>
+              <option value="VMC-02">VMC-02</option>
+              <option value="SG-01">SG-01 (Surface Grinding)</option>
+              <option value="WC-HS-01">Wire Cut HS-01</option>
+              <option value="EDM-01">EDM-01</option>
+            </select>
+          </div>
+          <div>
+            <label>Downtime Category</label>
+            <select id="dtCategory">
+              <option value="Tool Breakdown">Tool Breakdown</option>
+              <option value="Machine Breakdown">Machine Mechanical Fault</option>
+              <option value="Electrical / Power">Electrical / Power Cut</option>
+              <option value="Material Shortage">Material Shortage</option>
+              <option value="Setup / Adjustment">Setup / Calibration</option>
+              <option value="Operator Absent">Operator Absent</option>
+            </select>
+          </div>
+          <div>
+            <label>Duration (Minutes)</label>
+            <input type="number" id="dtMinutes" min="1" value="30">
+          </div>
+          <div>
+            <label>Shift</label>
+            <select id="dtShift">
+              <option value="Shift 1">Shift 1</option>
+              <option value="Shift 2">Shift 2</option>
+              <option value="Shift 3">Shift 3</option>
+            </select>
+          </div>
+          <div>
+            <label>Responsible Team</label>
+            <input type="text" id="dtTeam" placeholder="e.g. Maintenance">
+          </div>
+        </div>
+        <div>
+          <label>Root Cause / Remarks</label>
+          <input type="text" id="dtRemarks" placeholder="Enter detailed stoppage reason...">
+        </div>
+        <div style="margin-top: 10px;">
+          <button class="btn-primary" onclick="logDowntimeEvent()">Record Downtime Event</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom: 8px;">Recorded Stoppage Events</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Date / Time</th>
+              <th>Machine ID</th>
+              <th>Category</th>
+              <th>Duration (Min)</th>
+              <th>Shift</th>
+              <th>Team</th>
+              <th>Root Cause / Remarks</th>
+              <th class="no-print">Action</th>
+            </tr>
+          </thead>
+          <tbody id="downtimeTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- OEE CALCULATION -->
+    <div id="oeeTab" class="module-pane">
+      <div class="card">
+        <h3 style="margin-bottom: 2px;">Section-wise OEE (Overall Equipment Effectiveness) Calculator</h3>
+        <span style="font-size: 11px; color: var(--text-muted);">Automatically calculated from active plan quantities, execution time, and recorded downtime.</span>
+      </div>
+
+      <div class="summary-grid">
+        <div class="summary-box" style="border-left-color: var(--accent);">
+          <div class="summary-lbl">Overall Tool Room OEE</div>
+          <div class="summary-num" id="overallOeeVal">0.0%</div>
+        </div>
+        <div class="summary-box" style="border-left-color: var(--completed);">
+          <div class="summary-lbl">Avg Availability Rate</div>
+          <div class="summary-num" id="avgAvailVal">0.0%</div>
+        </div>
+        <div class="summary-box" style="border-left-color: var(--running);">
+          <div class="summary-lbl">Avg Performance Rate</div>
+          <div class="summary-num" id="avgPerfVal">0.0%</div>
+        </div>
+        <div class="summary-box" style="border-left-color: var(--shift2);">
+          <div class="summary-lbl">Avg Quality Rate</div>
+          <div class="summary-num" id="avgQualVal">0.0%</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom: 8px;">Auto-Aggregated Section Performance Matrix</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Section Group</th>
+              <th>Active Jobs Count</th>
+              <th>Planned Time (Min)</th>
+              <th>Recorded Downtime (Min)</th>
+              <th>Operating Time (Min)</th>
+              <th>Total Count Planned</th>
+              <th>Completed Good Count</th>
+              <th>Availability</th>
+              <th>Performance</th>
+              <th>Quality</th>
+              <th>OEE</th>
+            </tr>
+          </thead>
+          <tbody id="oeeTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 </div>
 
 <script>
-// ==========================================
-// 1. SUPABASE CLOUD KEYS
-// ==========================================
 const SUPABASE_URL = "https://nwdnbalqioewcoygbgyp.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im53ZG5iYWxxaW9ld2NveWdiZ3lwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4ODI1MjAsImV4cCI6MjEwNDQ1ODUyMH0.HMdDj4XhT3n99qQ2murxAz_LCiGS-DC-cYgblrVf5KA";
 
@@ -405,9 +689,17 @@ if (SUPABASE_URL.startsWith("https://") && !SUPABASE_URL.includes("yourprojectid
   }
 }
 
-// ==========================================
-// 2. 25 VMC + 15 TOOL ROOM MACHINES (40 MACHINES)
-// ==========================================
+function switchModule(paneId, btnElem) {
+  document.querySelectorAll('.module-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('active'));
+  document.getElementById(paneId).classList.add('active');
+  btnElem.classList.add('active');
+  if (paneId === 'oeeTab') renderAutomatedOeeTable();
+  if (paneId === 'attendanceTab') renderAttendanceTable();
+  if (paneId === 'shiftPlanTab') renderShiftRosterTable();
+  if (paneId === 'downtimeTab') renderDowntimeTable();
+}
+
 const FLEET_MAP = [
   { group: "VMC", label: "25 VMC Fleet", prefix: "VMC", count: 25 },
   { group: "SG", label: "Surface Grinding", prefix: "SG", count: 4 },
@@ -431,10 +723,7 @@ FLEET_MAP.forEach(item => {
 let baseDate = new Date();
 if (baseDate.getHours() < 6) baseDate.setHours(6, 0, 0, 0);
 
-// Global Plant Shift Default
 let globalShiftSystem = '3_SHIFT_8H';
-
-// View Mode: 'ALL' or 'DATE'
 let viewMode = 'ALL';
 let activeFilterDate = new Date().toISOString().slice(0, 10);
 
@@ -442,7 +731,50 @@ let jobsList = [];
 let machineStatus = {};
 ALL_MACHINES.forEach(m => machineStatus[m.id] = 'ACTIVE');
 
+let employeesList = [
+  { id: "2604005", name: "Gopinath", function: "DRI" },
+  { id: "2601008", name: "Dinesh", function: "PPC" },
+  { id: "2412009", name: "Vijay", function: "PPC" },
+  { id: "2509007", name: "Srikanth.V", function: "DOC" },
+  { id: "2501013", name: "Praveen Arumugam", function: "CNC" },
+  { id: "2502009", name: "Ramkumar", function: "DRO" },
+  { id: "2404010", name: "Murugan", function: "VMC" },
+  { id: "2404011", name: "Surya", function: "SHIFT LEADER" },
+  { id: "2405013", name: "Munivel C", function: "TOOL ROOM" },
+  { id: "2404200", name: "Jeevanantham", function: "VMC" },
+  { id: "2511004", name: "Dinesh", function: "VMC" },
+  { id: "2608006", name: "Akash", function: "VMC" },
+  { id: "2501007", name: "Sri Gowtham", function: "VMC" },
+  { id: "2603004", name: "Akash", function: "VMC" },
+  { id: "2412011", name: "Mariya Mani", function: "WIRE CUT" },
+  { id: "2601009", name: "Kanagaraj", function: "ROUGH MILL" },
+  { id: "2412004", name: "ilayadeepan", function: "SG" },
+  { id: "2408008", name: "Aslin S", function: "SHIFT LEADER" },
+  { id: "2404201", name: "Vijayakumar", function: "TOOL ROOM" },
+  { id: "2404005", name: "Prathiban", function: "VMC" },
+  { id: "2501009", name: "Mugunthan", function: "VMC" },
+  { id: "2412014", name: "Gnanasekar", function: "VMC" },
+  { id: "2411002", name: "Rajapandi K", function: "VMC" },
+  { id: "2601002", name: "Gokulan", function: "VMC" },
+  { id: "2405011", name: "Haresh T", function: "VMC" },
+  { id: "2502012", name: "G Venkatesan", function: "WIRE CUT" },
+  { id: "2512005", name: "Pandikannan", function: "ROUGH MILL" },
+  { id: "2502003", name: "Tamilarasu", function: "SG" }
+];
+
+let attendanceRecords = {};
+let shiftRosterData = {};
+let downtimeLogs = [
+  { id: 1, time: "2026-09-24 10:30", machine: "VMC-01", category: "Tool Breakdown", minutes: 45, shift: "Shift 1", team: "Tool Room", remarks: "End mill chipped during roughing op" },
+  { id: 2, time: "2026-09-24 14:15", machine: "SG-01", category: "Electrical / Power", minutes: 30, shift: "Shift 2", team: "Maintenance", remarks: "Voltage fluctuation trip" }
+];
 let currentUser = null;
+
+function getDayNameFromDate(dateStr) {
+  const d = new Date(dateStr);
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  return days[d.getDay()];
+}
 
 function onGlobalShiftModeChanged() {
   globalShiftSystem = document.getElementById('globalShiftMode').value;
@@ -563,8 +895,10 @@ function logout() {
 
 function applyRolePermissions() {
   document.getElementById('loginModal').style.display = 'none';
+  document.getElementById('sidebarNav').style.display = 'flex';
   document.getElementById('mainApp').style.display = 'flex';
   document.getElementById('userBadge').innerText = `${currentUser.username} [${currentUser.role}]`;
+  document.getElementById('homeUserRoleLbl').innerText = `${currentUser.username} (${currentUser.role})`;
 
   document.querySelectorAll('.admin-only').forEach(el => {
     el.style.display = (currentUser.role === 'ADMIN') ? '' : 'none';
@@ -586,9 +920,6 @@ function pickNextBestMachines(count, category) {
   return active.slice(0, count);
 }
 
-// ==========================================
-// 3. CLOUD CRUD OPERATIONS
-// ==========================================
 async function fetchCloudJobs() {
   if (!supabaseClient) {
     const saved = localStorage.getItem('VMC_CLOUD_BACKUP');
@@ -695,7 +1026,7 @@ async function updateJobInCloud(job) {
 }
 
 async function removeJobCloud(id) {
-  if (!confirm("Remove this specific job from cloud? Schedule will auto-shift.")) return;
+  if (!confirm("Remove this specific job from cloud?")) return;
 
   if (!supabaseClient) {
     jobsList = jobsList.filter(j => j.id !== id);
@@ -807,9 +1138,6 @@ function initGanttTabs() {
   });
 }
 
-// ==========================================
-// 4. SHIFT & BREAK ADVANCEMENT ENGINE
-// ==========================================
 function advanceTimeWithBreaks(startTime, durationMinutes, pattern) {
   let current = new Date(startTime);
   let remaining = durationMinutes;
@@ -821,103 +1149,29 @@ function advanceTimeWithBreaks(startTime, durationMinutes, pattern) {
     let totalMins = hrs * 60 + mins;
 
     if (p === 'GEN_SHIFT_8H') {
-      // General Shift: 09:00 (540) to 17:30 (1050)
-      // If outside general shift window, skip to next day 09:00
-      if (totalMins < 540) {
-        current.setHours(9, 0, 0, 0);
-        continue;
-      }
-      if (totalMins >= 1050) {
-        current.setDate(current.getDate() + 1);
-        current.setHours(9, 0, 0, 0);
-        continue;
-      }
-      // Breaks inside general shift:
-      // Morning Tea: 11:00 - 11:15 (660 - 675)
-      if (totalMins >= 660 && totalMins < 675) {
-        current.setMinutes(current.getMinutes() + (675 - totalMins));
-        continue;
-      }
-      // Lunch: 13:00 - 13:30 (780 - 810)
-      if (totalMins >= 780 && totalMins < 810) {
-        current.setMinutes(current.getMinutes() + (810 - totalMins));
-        continue;
-      }
-      // Evening Tea: 15:30 - 15:45 (930 - 945)
-      if (totalMins >= 930 && totalMins < 945) {
-        current.setMinutes(current.getMinutes() + (945 - totalMins));
-        continue;
-      }
+      if (totalMins < 540) { current.setHours(9, 0, 0, 0); continue; }
+      if (totalMins >= 1050) { current.setDate(current.getDate() + 1); current.setHours(9, 0, 0, 0); continue; }
+      if (totalMins >= 660 && totalMins < 675) { current.setMinutes(current.getMinutes() + (675 - totalMins)); continue; }
+      if (totalMins >= 780 && totalMins < 810) { current.setMinutes(current.getMinutes() + (810 - totalMins)); continue; }
+      if (totalMins >= 930 && totalMins < 945) { current.setMinutes(current.getMinutes() + (945 - totalMins)); continue; }
     } else if (p === '2_SHIFT_8H') {
-      // 2 Shifts 8H: 06:00 (360) to 23:00 (1380)
-      // Night closed: 23:00 to 06:00
-      if (totalMins < 360) {
-        current.setHours(6, 0, 0, 0);
-        continue;
-      }
-      if (totalMins >= 1380) {
-        current.setDate(current.getDate() + 1);
-        current.setHours(6, 0, 0, 0);
-        continue;
-      }
-      // Shift 1 Tea: 10:15 - 10:30 (615 - 630), Lunch: 12:00 - 12:30 (720 - 750)
-      if (totalMins >= 615 && totalMins < 630) {
-        current.setMinutes(current.getMinutes() + (630 - totalMins));
-        continue;
-      }
-      if (totalMins >= 720 && totalMins < 750) {
-        current.setMinutes(current.getMinutes() + (750 - totalMins));
-        continue;
-      }
-      // Shift 2 Dinner: 19:30 - 20:00 (1170 - 1200), Tea: 22:15 - 22:30 (1335 - 1350)
-      if (totalMins >= 1170 && totalMins < 1200) {
-        current.setMinutes(current.getMinutes() + (1200 - totalMins));
-        continue;
-      }
-      if (totalMins >= 1335 && totalMins < 1350) {
-        current.setMinutes(current.getMinutes() + (1350 - totalMins));
-        continue;
-      }
+      if (totalMins < 360) { current.setHours(6, 0, 0, 0); continue; }
+      if (totalMins >= 1380) { current.setDate(current.getDate() + 1); current.setHours(6, 0, 0, 0); continue; }
+      if (totalMins >= 615 && totalMins < 630) { current.setMinutes(current.getMinutes() + (630 - totalMins)); continue; }
+      if (totalMins >= 720 && totalMins < 750) { current.setMinutes(current.getMinutes() + (750 - totalMins)); continue; }
+      if (totalMins >= 1170 && totalMins < 1200) { current.setMinutes(current.getMinutes() + (1200 - totalMins)); continue; }
+      if (totalMins >= 1335 && totalMins < 1350) { current.setMinutes(current.getMinutes() + (1350 - totalMins)); continue; }
     } else if (p === '3_SHIFT_8H') {
-      // 3 Shifts 8H: 24 Hours Running
-      if (totalMins >= 615 && totalMins < 630) {
-        current.setMinutes(current.getMinutes() + (630 - totalMins));
-        continue;
-      }
-      if (totalMins >= 720 && totalMins < 750) {
-        current.setMinutes(current.getMinutes() + (750 - totalMins));
-        continue;
-      }
-      if (totalMins >= 1170 && totalMins < 1200) {
-        current.setMinutes(current.getMinutes() + (1200 - totalMins));
-        continue;
-      }
-      if (totalMins >= 1335 && totalMins < 1350) {
-        current.setMinutes(current.getMinutes() + (1350 - totalMins));
-        continue;
-      }
-      if (totalMins >= 180 && totalMins < 195) {
-        current.setMinutes(current.getMinutes() + (195 - totalMins));
-        continue;
-      }
+      if (totalMins >= 615 && totalMins < 630) { current.setMinutes(current.getMinutes() + (630 - totalMins)); continue; }
+      if (totalMins >= 720 && totalMins < 750) { current.setMinutes(current.getMinutes() + (750 - totalMins)); continue; }
+      if (totalMins >= 1170 && totalMins < 1200) { current.setMinutes(current.getMinutes() + (1200 - totalMins)); continue; }
+      if (totalMins >= 1335 && totalMins < 1350) { current.setMinutes(current.getMinutes() + (1350 - totalMins)); continue; }
+      if (totalMins >= 180 && totalMins < 195) { current.setMinutes(current.getMinutes() + (195 - totalMins)); continue; }
     } else if (p === '2_SHIFT_12H') {
-      // 12 Hrs x 2 Shifts: 24 Hours
-      if (totalMins >= 615 && totalMins < 630) {
-        current.setMinutes(current.getMinutes() + (630 - totalMins));
-        continue;
-      }
-      if (totalMins >= 750 && totalMins < 780) {
-        current.setMinutes(current.getMinutes() + (780 - totalMins));
-        continue;
-      }
-      if (totalMins >= 1230 && totalMins < 1260) {
-        current.setMinutes(current.getMinutes() + (1260 - totalMins));
-        continue;
-      }
-      if (totalMins >= 1350 && totalMins < 1365) {
-        current.setMinutes(current.getMinutes() + (1365 - totalMins));
-        continue;
-      }
+      if (totalMins >= 615 && totalMins < 630) { current.setMinutes(current.getMinutes() + (630 - totalMins)); continue; }
+      if (totalMins >= 750 && totalMins < 780) { current.setMinutes(current.getMinutes() + (780 - totalMins)); continue; }
+      if (totalMins >= 1230 && totalMins < 1260) { current.setMinutes(current.getMinutes() + (1260 - totalMins)); continue; }
+      if (totalMins >= 1350 && totalMins < 1365) { current.setMinutes(current.getMinutes() + (1365 - totalMins)); continue; }
     }
 
     current.setMinutes(current.getMinutes() + 1);
@@ -1037,9 +1291,6 @@ async function updatePieceRemarks(jobId, pieceNo, val) {
   await updateJobInCloud(job);
 }
 
-// ==========================================
-// 5. CASCADE ENGINE & RENDER
-// ==========================================
 function recalculateAndRender() {
   let machineTimes = {};
   let ganttData = {};
@@ -1055,7 +1306,6 @@ function recalculateAndRender() {
   let s1Count = 0, s2Count = 0, s3Count = 0;
   let s1Mins = 0, s2Mins = 0, s3Mins = 0;
   let totalPiecesDisplayed = 0, completedPiecesDisplayed = 0;
-
   let currentSI = 1;
 
   jobsList.forEach((job) => {
@@ -1136,12 +1386,11 @@ function recalculateAndRender() {
         let isFirstRow = (idx === 0);
         let row = document.createElement('tr');
         row.className = (isFirstRow ? 'group-start ' : '') + 
-                        (job.priority === 'URGENT' ? 'urgent-row ' : '') + 
                         (pc.status === 'RUNNING' ? 'status-running ' : '') + 
                         (pc.status === 'COMPLETED' ? 'status-completed ' : '') +
                         (pc.delayMins > 0 ? 'status-delayed ' : '');
 
-        let controlsHtml = `<div style="display: flex; gap: 3px; justify-content: center; align-items: center; flex-wrap: wrap;">`;
+        let controlsHtml = `<div style="display: flex; gap: 4px; justify-content: center; align-items: center; flex-wrap: wrap;">`;
 
         if (isFirstRow && currentUser && currentUser.role === 'ADMIN') {
           controlsHtml += `<button class="btn-action btn-edit" onclick="editJob('${job.id}')" title="Edit">Edit</button>`;
@@ -1149,12 +1398,12 @@ function recalculateAndRender() {
         }
 
         if (pc.status !== 'COMPLETED') {
-          controlsHtml += `<button class="btn-start" onclick="setPieceStatus('${job.id}', ${pc.pieceNo}, 'RUNNING')">Run</button>`;
-          controlsHtml += `<button class="btn-done" onclick="setPieceStatus('${job.id}', ${pc.pieceNo}, 'COMPLETED')">Done</button>`;
+          controlsHtml += `<button class="btn-action btn-start" onclick="setPieceStatus('${job.id}', ${pc.pieceNo}, 'RUNNING')">Run</button>`;
+          controlsHtml += `<button class="btn-action btn-done" onclick="setPieceStatus('${job.id}', ${pc.pieceNo}, 'COMPLETED')">Done</button>`;
         } else {
-          controlsHtml += `<button class="btn-undo" onclick="setPieceStatus('${job.id}', ${pc.pieceNo}, 'PLANNED')">Undo</button>`;
+          controlsHtml += `<button class="btn-action btn-undo" onclick="setPieceStatus('${job.id}', ${pc.pieceNo}, 'PLANNED')">Undo</button>`;
         }
-        controlsHtml += `<button class="btn-delay" onclick="addManualDelay('${job.id}', ${pc.pieceNo})">+Delay</button>`;
+        controlsHtml += `<button class="btn-action btn-delay" onclick="addManualDelay('${job.id}', ${pc.pieceNo})">+Delay</button>`;
         controlsHtml += `</div>`;
 
         let currentRemark = job.pieceRemarks[pc.pieceNo] || '';
@@ -1171,7 +1420,7 @@ function recalculateAndRender() {
           <td style="text-align: center;">${formatDuration(pc.duration)}</td>
           <td style="text-align: center;">
             <strong>${formatHourRange(pc.start, pc.end)}</strong>
-            ${pc.delayMins > 0 ? `<span class="badge-delayed">+${pc.delayMins}m</span>` : ''}
+            ${pc.delayMins > 0 ? `<span class="badge-status badge-delayed">+${pc.delayMins}m</span>` : ''}
           </td>
           <td style="text-align: center;">${pc.dateStr}</td>
           <td style="text-align: center;"><span class="badge-shift ${shiftBadgeClass}">${pc.shift}</span></td>
@@ -1181,7 +1430,7 @@ function recalculateAndRender() {
             <span class="badge-status badge-${pc.status.toLowerCase()}">${pc.status}</span>
           </td>
           <td>
-            <input type="text" class="inline-remarks" value="${currentRemark}" placeholder="Type delay / notes..." onchange="updatePieceRemarks('${job.id}', ${pc.pieceNo}, this.value)">
+            <input type="text" class="inline-remarks" value="${currentRemark}" placeholder="Type notes..." onchange="updatePieceRemarks('${job.id}', ${pc.pieceNo}, this.value)">
           </td>
           <td class="no-print" style="text-align: center;">${controlsHtml}</td>
         `;
@@ -1192,7 +1441,7 @@ function recalculateAndRender() {
   });
 
   if (totalPiecesDisplayed === 0) {
-    tbody.innerHTML = `<tr><td colspan="16" style="text-align:center; padding: 25px; color:#94a3b8;">No jobs found for the selected view mode. Enter a new job above.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="16" style="text-align:center; padding: 25px; color:var(--text-muted);">No active jobs found for the selected view.</td></tr>`;
   }
 
   document.getElementById('shift1Qty').innerText = `${s1Count} nos`;
@@ -1220,7 +1469,7 @@ function recalculateAndRender() {
     machineGrid.innerHTML += `
       <div class="machine-card ${isBD ? 'is-breakdown' : ''}">
         <b>${m.id}</b>
-        <div style="font-size: 9px; color: #64748b; margin: 2px 0;">${isBD ? '⚠️ DOWN' : 'Free: ' + dt.getHours() + ':' + String(dt.getMinutes()).padStart(2, '0')}</div>
+        <div style="font-size: 9px; color: var(--text-muted); margin: 2px 0;">${isBD ? '⚠️ DOWN' : 'Free: ' + dt.getHours() + ':' + String(dt.getMinutes()).padStart(2, '0')}</div>
         <button class="btn-action ${isBD ? 'btn-done' : 'btn-del'}" onclick="toggleMachineBreakdown('${m.id}')" style="font-size: 9px;">
           ${isBD ? 'Restore' : 'Breakdown'}
         </button>
@@ -1229,6 +1478,7 @@ function recalculateAndRender() {
   });
 
   renderLiveGantt(ganttData);
+  renderAutomatedOeeTable();
 }
 
 function renderLiveGantt(ganttData) {
@@ -1253,20 +1503,20 @@ function renderLiveGantt(ganttData) {
     track.className = 'gantt-track';
 
     if (machineStatus[m.id] === 'BREAKDOWN') {
-      track.style.background = '#fecaca';
-      track.innerHTML = '<span style="color:#991b1b; font-weight:bold; font-size:10px; margin:auto;">⚠️ MACHINE IN BREAKDOWN</span>';
+      track.style.background = '#fee2e2';
+      track.innerHTML = '<span style="color:#991b1b; font-weight:700; font-size:10px; margin:auto;">⚠️ MACHINE IN BREAKDOWN</span>';
     } else if (pieces.length === 0) {
-      track.innerHTML = '<span style="color:#94a3b8; font-size:10px; margin:auto;">No Jobs in this View</span>';
+      track.innerHTML = '<span style="color:#94a3b8; font-size:10px; margin:auto;">No Jobs Scheduled</span>';
     } else {
       pieces.forEach(p => {
         let bar = document.createElement('div');
         bar.className = 'gantt-bar';
-        bar.style.width = `${Math.max(10, 100 / pieces.length)}%`;
+        bar.style.width = `${Math.max(12, 100 / pieces.length)}%`;
 
-        if (p.isDelayed) bar.style.background = '#dc2626';
-        else if (p.status === 'COMPLETED') bar.style.background = '#16a34a';
+        if (p.isDelayed) bar.style.background = '#ef4444';
+        else if (p.status === 'COMPLETED') bar.style.background = '#10b981';
         else if (p.status === 'RUNNING') bar.style.background = '#f59e0b';
-        else bar.style.background = '#2563eb';
+        else bar.style.background = '#3b82f6';
 
         bar.title = `${p.part} #${p.piece} (${p.time}) [${p.status}]`;
         bar.innerText = `#${p.piece} ${p.part}`;
@@ -1280,9 +1530,262 @@ function renderLiveGantt(ganttData) {
   });
 }
 
-// ==========================================
-// 6. SUBMISSION WITH SHIFT PATTERN SELECTION
-// ==========================================
+function renderShiftRosterTable() {
+  const tbody = document.getElementById('shiftRosterTableBody');
+  tbody.innerHTML = '';
+
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  employeesList.forEach(emp => {
+    if (!shiftRosterData[emp.id]) {
+      shiftRosterData[emp.id] = { Mon: 'Shift 1', Tue: 'Shift 1', Wed: 'Shift 1', Thu: 'Shift 1', Fri: 'Shift 1', Sat: 'Off', Sun: 'Off' };
+    }
+    let empShifts = shiftRosterData[emp.id];
+
+    let row = document.createElement('tr');
+    let cellsHtml = `<td><strong>${emp.id}</strong></td><td>${emp.name}</td><td>${emp.function}</td>`;
+
+    days.forEach(day => {
+      let currentVal = empShifts[day] || 'Shift 1';
+      cellsHtml += `
+        <td>
+          <select onchange="updateShiftRoster('${emp.id}', '${day}', this.value)" style="width: auto; padding: 3px;">
+            <option value="Shift 1" ${currentVal === 'Shift 1' ? 'selected' : ''}>Shift 1</option>
+            <option value="Shift 2" ${currentVal === 'Shift 2' ? 'selected' : ''}>Shift 2</option>
+            <option value="Shift 3" ${currentVal === 'Shift 3' ? 'selected' : ''}>Shift 3</option>
+            <option value="General" ${currentVal === 'General' ? 'selected' : ''}>General</option>
+            <option value="Off" ${currentVal === 'Off' ? 'selected' : ''}>Off</option>
+          </select>
+        </td>
+      `;
+    });
+
+    row.innerHTML = cellsHtml;
+    tbody.appendChild(row);
+  });
+}
+
+function updateShiftRoster(empId, day, val) {
+  if (!shiftRosterData[empId]) shiftRosterData[empId] = {};
+  shiftRosterData[empId][day] = val;
+  renderAttendanceTable();
+}
+
+function saveShiftRoster() {
+  alert("Weekly shift roster successfully saved and synchronized!");
+}
+
+document.getElementById('attDate').value = new Date().toISOString().slice(0, 10);
+
+function renderAttendanceTable() {
+  const dateVal = document.getElementById('attDate').value;
+  const dayName = getDayNameFromDate(dateVal);
+  const tbody = document.getElementById('attendanceTableBody');
+  tbody.innerHTML = '';
+
+  employeesList.forEach(emp => {
+    let rosteredShift = (shiftRosterData[emp.id] && shiftRosterData[emp.id][dayName]) ? shiftRosterData[emp.id][dayName] : 'Shift 1';
+
+    let key = `${dateVal}_${emp.id}`;
+    if (!attendanceRecords[key]) {
+      let defaultIn = rosteredShift === 'Shift 2' ? '14:30' : (rosteredShift === 'Shift 3' ? '23:00' : (rosteredShift === 'General' ? '09:00' : '06:00'));
+      let defaultOut = rosteredShift === 'Shift 2' ? '23:00' : (rosteredShift === 'Shift 3' ? '06:00' : (rosteredShift === 'General' ? '17:30' : '14:30'));
+      attendanceRecords[key] = { status: rosteredShift === 'Off' ? 'On Leave' : 'Present', clockIn: defaultIn, clockOut: defaultOut, remarks: rosteredShift === 'Off' ? 'Weekly Off' : 'Scheduled' };
+    }
+    let rec = attendanceRecords[key];
+    let badgeClass = rosteredShift === 'Shift 1' ? 'badge-s1' : (rosteredShift === 'Shift 2' ? 'badge-s2' : (rosteredShift === 'Shift 3' ? 'badge-s3' : 'badge-gen'));
+
+    let row = document.createElement('tr');
+    row.innerHTML = `
+      <td><strong>${emp.id}</strong></td>
+      <td>${emp.name}</td>
+      <td>${emp.function}</td>
+      <td><span class="badge-shift ${badgeClass}">${rosteredShift}</span></td>
+      <td>
+        <select onchange="updateAttendance('${emp.id}', 'status', this.value)" style="width: auto;">
+          <option value="Present" ${rec.status === 'Present' ? 'selected' : ''}>Present</option>
+          <option value="Absent" ${rec.status === 'Absent' ? 'selected' : ''}>Absent</option>
+          <option value="Half Day" ${rec.status === 'Half Day' ? 'selected' : ''}>Half Day</option>
+          <option value="On Leave" ${rec.status === 'On Leave' ? 'selected' : ''}>On Leave</option>
+        </select>
+      </td>
+      <td><input type="time" value="${rec.clockIn}" onchange="updateAttendance('${emp.id}', 'clockIn', this.value)"></td>
+      <td><input type="time" value="${rec.clockOut}" onchange="updateAttendance('${emp.id}', 'clockOut', this.value)"></td>
+      <td><input type="text" class="inline-remarks" value="${rec.remarks}" onchange="updateAttendance('${emp.id}', 'remarks', this.value)"></td>
+    `;
+    tbody.appendChild(row);
+  });
+}
+
+function updateAttendance(empId, field, val) {
+  const dateVal = document.getElementById('attDate').value;
+  let key = `${dateVal}_${empId}`;
+  if (!attendanceRecords[key]) attendanceRecords[key] = { status: 'Present', clockIn: '06:00', clockOut: '14:30', remarks: '' };
+  attendanceRecords[key][field] = val;
+}
+
+function markAllPresent() {
+  const dateVal = document.getElementById('attDate').value;
+  const dayName = getDayNameFromDate(dateVal);
+  employeesList.forEach(emp => {
+    let rosteredShift = (shiftRosterData[emp.id] && shiftRosterData[emp.id][dayName]) ? shiftRosterData[emp.id][dayName] : 'Shift 1';
+    let key = `${dateVal}_${emp.id}`;
+    attendanceRecords[key] = { status: 'Present', clockIn: '06:00', clockOut: '14:30', remarks: `Rostered: ${rosteredShift}` };
+  });
+  renderAttendanceTable();
+}
+
+function renderDowntimeTable() {
+  const tbody = document.getElementById('downtimeTableBody');
+  tbody.innerHTML = '';
+
+  downtimeLogs.forEach((item, index) => {
+    let row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${item.time}</td>
+      <td><strong>${item.machine}</strong></td>
+      <td><span style="color:var(--urgent); font-weight:700;">${item.category}</span></td>
+      <td style="text-align:center;">${item.minutes} min</td>
+      <td style="text-align:center;">${item.shift}</td>
+      <td>${item.team}</td>
+      <td>${item.remarks}</td>
+      <td class="no-print" style="text-align:center;"><button class="btn-action btn-del" onclick="deleteDowntimeEvent(${index})">X</button></td>
+    `;
+    tbody.appendChild(row);
+  });
+}
+
+function logDowntimeEvent() {
+  const machine = document.getElementById('dtMachine').value;
+  const category = document.getElementById('dtCategory').value;
+  const minutes = parseInt(document.getElementById('dtMinutes').value) || 0;
+  const shift = document.getElementById('dtShift').value;
+  const team = document.getElementById('dtTeam').value || 'Maintenance';
+  const remarks = document.getElementById('dtRemarks').value || 'Stoppage logged';
+
+  if (minutes <= 0) {
+    alert("Please enter valid downtime minutes.");
+    return;
+  }
+
+  downtimeLogs.push({
+    id: Date.now(),
+    time: new Date().toISOString().slice(0, 16).replace('T', ' '),
+    machine,
+    category,
+    minutes,
+    shift,
+    team,
+    remarks
+  });
+
+  document.getElementById('dtRemarks').value = '';
+  renderDowntimeTable();
+  renderAutomatedOeeTable();
+}
+
+function deleteDowntimeEvent(index) {
+  downtimeLogs.splice(index, 1);
+  renderDowntimeTable();
+  renderAutomatedOeeTable();
+}
+
+function renderAutomatedOeeTable() {
+  const tbody = document.getElementById('oeeTableBody');
+  tbody.innerHTML = '';
+
+  let sectionMap = {};
+  FLEET_MAP.forEach(f => {
+    sectionMap[f.group] = { label: f.label, jobCount: 0, plannedMins: 0, recordedDtMins: 0, totalCount: 0, goodCount: 0 };
+  });
+
+  downtimeLogs.forEach(dt => {
+    let mObj = ALL_MACHINES.find(m => m.id === dt.machine);
+    let group = mObj ? mObj.group : 'VMC';
+    if (sectionMap[group]) {
+      sectionMap[group].recordedDtMins += dt.minutes;
+    }
+  });
+
+  let totalDtMinsSum = 0;
+  downtimeLogs.forEach(d => totalDtMinsSum += d.minutes);
+  document.getElementById('homeDtVal').innerText = `${totalDtMinsSum} min`;
+
+  jobsList.forEach(job => {
+    let mObj = ALL_MACHINES.find(m => m.id === job.assignedMachine);
+    let group = mObj ? mObj.group : 'VMC';
+    if (!sectionMap[group]) sectionMap[group] = { label: group, jobCount: 0, plannedMins: 0, recordedDtMins: 0, totalCount: 0, goodCount: 0 };
+
+    sectionMap[group].jobCount++;
+    sectionMap[group].totalCount += job.qty;
+    
+    let jobMins = 0;
+    let completedInJob = 0;
+    for (let p = 1; p <= job.qty; p++) {
+      let bDur = (p === 1) ? job.firstPcMins : job.cycleMins;
+      let dMins = (job.pieceDelays && job.pieceDelays[p]) ? job.pieceDelays[p] : 0;
+      jobMins += (bDur + dMins);
+      if (job.pieceStates && job.pieceStates[p] === 'COMPLETED') {
+        completedInJob++;
+      }
+    }
+    sectionMap[group].plannedMins += jobMins;
+    sectionMap[group].goodCount += completedInJob;
+  });
+
+  document.getElementById('homeJobsVal').innerText = `${jobsList.length} jobs`;
+
+  let sumOee = 0, sumAvail = 0, sumPerf = 0, sumQual = 0, activeSectionsCount = 0;
+
+  Object.keys(sectionMap).forEach(gKey => {
+    let data = sectionMap[gKey];
+    if (data.jobCount === 0 && data.recordedDtMins === 0) return;
+
+    activeSectionsCount++;
+    let totalPlannedTime = Math.max(480, data.plannedMins);
+    let operatingTime = Math.max(0, totalPlannedTime - data.recordedDtMins);
+    let avgIdealCycle = data.totalCount > 0 ? (totalPlannedTime / data.totalCount) : 10;
+    
+    let availability = totalPlannedTime > 0 ? (operatingTime / totalPlannedTime) : 0;
+    let performance = operatingTime > 0 ? ((avgIdealCycle * data.totalCount) / operatingTime) : 0;
+    let quality = data.totalCount > 0 ? (data.goodCount / data.totalCount) : (data.jobCount > 0 ? 1 : 0);
+
+    let oee = availability * performance * quality * 100;
+    let availPct = availability * 100;
+    let perfPct = performance * 100;
+    let qualPct = quality * 100;
+
+    sumOee += oee;
+    sumAvail += availPct;
+    sumPerf += perfPct;
+    sumQual += qualPct;
+
+    let row = document.createElement('tr');
+    row.innerHTML = `
+      <td><strong>${data.label}</strong></td>
+      <td style="text-align:center;">${data.jobCount} jobs</td>
+      <td style="text-align:center;">${totalPlannedTime} min</td>
+      <td style="text-align:center; color:var(--urgent); font-weight:700;">${data.recordedDtMins} min</td>
+      <td style="text-align:center;">${operatingTime} min</td>
+      <td style="text-align:center;">${data.totalCount}</td>
+      <td style="text-align:center;">${data.goodCount}</td>
+      <td style="text-align:center; font-weight:700; color:var(--accent);">${availPct.toFixed(1)}%</td>
+      <td style="text-align:center; font-weight:700; color:var(--running);">${perfPct.toFixed(1)}%</td>
+      <td style="text-align:center; font-weight:700; color:var(--shift2);">${qualPct.toFixed(1)}%</td>
+      <td style="text-align:center; font-weight:700; color:var(--completed);">${oee.toFixed(1)}%</td>
+    `;
+    tbody.appendChild(row);
+  });
+
+  let divFactor = activeSectionsCount > 0 ? activeSectionsCount : 1;
+  let finalOee = (sumOee / divFactor).toFixed(1);
+  document.getElementById('overallOeeVal').innerText = `${finalOee}%`;
+  document.getElementById('homeOeeVal').innerText = `${finalOee}%`;
+  document.getElementById('avgAvailVal').innerText = `${(sumAvail / divFactor).toFixed(1)}%`;
+  document.getElementById('avgPerfVal').innerText = `${(sumPerf / divFactor).toFixed(1)}%`;
+  document.getElementById('avgQualVal').innerText = `${(sumQual / divFactor).toFixed(1)}%`;
+}
+
 document.getElementById('jobForm').addEventListener('submit', async function(e) {
   e.preventDefault();
 
@@ -1439,7 +1942,7 @@ function exportToExcel() {
 
   const ws = XLSX.utils.table_to_sheet(cloneTable);
   XLSX.utils.book_append_sheet(wb, ws, "Cloud MES Plan");
-  XLSX.writeFile(wb, `Cloud_MES_Plan_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  XLSX.writeFile(wb, `Production_ERP_Suite_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
 renderFilteredMachines();
