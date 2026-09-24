@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tool Room MES - 25 VMC & Fleet Cloud Scheduler</title>
+  <title>Tool Room MES - 25 VMC & Fleet Multi-Shift Cloud Scheduler</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
@@ -17,11 +17,15 @@
       --running: #f59e0b;
       --completed: #16a34a;
       --breakdown: #dc2626;
+      --shift1: #0284c7;
+      --shift2: #7c3aed;
+      --shift3: #d97706;
+      --shiftgen: #059669;
     }
     * { box-sizing: border-box; font-family: Calibri, 'Segoe UI', Arial, sans-serif; }
     body { margin: 0; padding: 10px; background: var(--bg); color: #1e293b; }
     h2, h3 { margin: 0 0 4px; color: var(--primary); }
-    .container { max-width: 1780px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+    .container { max-width: 1840px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
     .card { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
     
     #loginModal {
@@ -40,7 +44,12 @@
     .btn-primary { background: var(--accent); color: white; }
     .btn-primary:hover { background: #1d4ed8; }
     .btn-excel { background: #16a34a; color: white; }
-    .btn-reset { background: #fee2e2; color: #dc2626; border: 1px solid #f87171; }
+    .btn-nav { background: #e2e8f0; color: #1e293b; padding: 4px 8px; font-size: 11px; }
+
+    .top-toolbar-group {
+      display: flex; align-items: center; gap: 6px; background: #e0f2fe; 
+      padding: 4px 10px; border-radius: 5px; border: 1px solid #bae6fd; flex-wrap: wrap;
+    }
     
     .machine-filter-box {
       background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 5px; 
@@ -54,8 +63,12 @@
     }
     .chip input { width: auto; margin: 0; cursor: pointer; }
 
-    .fleet-summary-bar { display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; }
-    .fleet-drawer { margin-top: 8px; display: none; }
+    .collapsible-header {
+      display: flex; justify-content: space-between; align-items: center; 
+      cursor: pointer; user-select: none; font-size: 12px; font-weight: bold; color: var(--primary);
+    }
+    .drawer-content { margin-top: 8px; }
+
     .fleet-category-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
     .tab-btn { background: #e2e8f0; color: #334155; font-size: 11px; padding: 3px 8px; border-radius: 4px; }
     .tab-btn.active { background: var(--accent); color: white; }
@@ -66,10 +79,21 @@
     }
     .machine-card.is-breakdown { background: #fee2e2; border-color: #fca5a5; border-left-color: var(--breakdown); }
 
-    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
     .summary-box { background: #f8fafc; border: 1px solid var(--border); border-radius: 4px; padding: 8px; border-left: 4px solid var(--accent); }
     .summary-num { font-size: 17px; font-weight: bold; color: var(--primary); }
     .summary-lbl { font-size: 10px; color: #64748b; font-weight: bold; text-transform: uppercase; }
+
+    .gantt-container { overflow-x: auto; max-height: 320px; overflow-y: auto; padding: 6px 0; }
+    .gantt-row { display: flex; align-items: center; margin-bottom: 4px; font-size: 11px; }
+    .gantt-label { width: 90px; font-weight: bold; flex-shrink: 0; color: #334155; font-size: 11px; }
+    .gantt-track { flex-grow: 1; height: 22px; background: #e2e8f0; border-radius: 3px; position: relative; overflow: hidden; display: flex; }
+    .gantt-bar {
+      height: 100%; color: white; font-size: 10px; font-weight: bold; 
+      padding: 0 5px; display: flex; align-items: center; overflow: hidden; 
+      text-overflow: ellipsis; white-space: nowrap; cursor: pointer; transition: 0.15s;
+    }
+    .gantt-bar:hover { opacity: 0.9; }
 
     table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 11.5px; background: #fff; }
     th, td { border: 1px solid #94a3b8; padding: 4px 6px; text-align: left; }
@@ -84,6 +108,12 @@
     .badge-running { background: #fef3c7; color: #b45309; }
     .badge-completed { background: #dcfce7; color: #15803d; }
     .badge-delayed { background: #fee2e2; color: #b91c1c; font-size: 9px; padding: 1px 3px; border-radius: 3px; font-weight: bold; border: 1px solid #fca5a5; }
+
+    .badge-shift { font-size: 10px; padding: 1px 5px; border-radius: 3px; font-weight: bold; color: white; }
+    .badge-s1 { background: var(--shift1); }
+    .badge-s2 { background: var(--shift2); }
+    .badge-s3 { background: var(--shift3); }
+    .badge-gen { background: var(--shiftgen); }
 
     .btn-action { padding: 2px 4px; font-size: 10px; border-radius: 3px; font-weight: bold; }
     .btn-edit { background: #e0f2fe; color: #0284c7; border: 1px solid #7dd3fc; }
@@ -118,7 +148,7 @@
         <label>Password</label>
         <input type="password" id="loginPass" placeholder="••••••••" required>
       </div>
-      <button class="btn-primary" style="margin-top: 8px; padding: 8px;" onclick="authenticateUser()">Sign In (Cloud Sync)</button>
+      <button class="btn-primary" style="margin-top: 8px; padding: 8px;" onclick="authenticateUser()">Sign In</button>
       <div style="font-size: 11px; color: #64748b; text-align: center; margin-top: 6px;">
         Admin: <b>admin / admin123</b> | Operator: <b>operator / vmc123</b>
       </div>
@@ -134,24 +164,56 @@
         Cloud Status: <strong style="color: #16a34a;">● Live Synced</strong> • Logged as: <strong id="userBadge" style="color: var(--accent);"></strong>
       </span>
     </div>
+
+    <!-- Global Default Shift Mode Switcher -->
+    <div class="top-toolbar-group">
+      <span style="font-size: 11px; font-weight: bold; color: #0369a1;">⏰ Default Plant Shift:</span>
+      <select id="globalShiftMode" onchange="onGlobalShiftModeChanged()" style="width: auto; padding: 2px 5px; font-weight: bold; background: white;">
+        <option value="3_SHIFT_8H" selected>8 Hrs x 3 Shifts (24 Hrs)</option>
+        <option value="2_SHIFT_8H">8 Hrs x 2 Shifts (6:00 AM – 11:00 PM)</option>
+        <option value="GEN_SHIFT_8H">General Shift (9:00 AM – 5:30 PM)</option>
+        <option value="2_SHIFT_12H">12 Hrs x 2 Shifts (Urgent 24 Hrs)</option>
+      </select>
+    </div>
+
+    <!-- Date Navigation Toolbar -->
+    <div class="top-toolbar-group">
+      <span style="font-size: 11px; font-weight: bold; color: #0369a1;">📅 View:</span>
+      <select id="dateFilterMode" onchange="toggleDateFilterMode()" style="width: auto; padding: 2px 4px; font-weight: bold; background: white;">
+        <option value="ALL" selected>All Dates (Live Plan)</option>
+        <option value="DATE">Specific Date Only</option>
+      </select>
+      <div id="specificDateControls" style="display: none; align-items: center; gap: 4px;">
+        <button class="btn-nav" onclick="changeDateOffset(-1)">◀</button>
+        <input type="date" id="selectedPlanDate" onchange="onDateFilterChanged()" style="width: auto; padding: 2px 4px;">
+        <button class="btn-nav" onclick="changeDateOffset(1)">▶</button>
+        <button class="btn-nav" onclick="setTodayDate()">Today</button>
+      </div>
+    </div>
+
     <div style="display: flex; gap: 6px; align-items: center;">
-      <button class="btn-reset admin-only" onclick="clearAllJobsCloud()">Reset Cloud Schedule</button>
       <button class="btn-excel" onclick="exportToExcel()">Export Excel (.xlsx)</button>
       <button class="btn-primary" onclick="window.print()">Print A4 Sheet</button>
       <button style="background: #64748b; color:white;" onclick="logout()">Logout</button>
     </div>
   </div>
 
-  <div class="summary-grid no-print">
-    <div class="summary-box" style="border-left-color: #0284c7;">
-      <div class="summary-lbl">Shift 1 (06:00 AM – 14:30 PM)</div>
+  <!-- Dynamic Summary Dashboard -->
+  <div class="summary-grid no-print" id="summaryCardsContainer">
+    <div class="summary-box" id="sumShift1Box" style="border-left-color: var(--shift1);">
+      <div class="summary-lbl" id="shift1Title">Shift 1 (06:00 AM – 02:30 PM)</div>
       <div class="summary-num" id="shift1Qty">0 nos</div>
       <div style="font-size: 10px; color: #64748b;" id="shift1Hours">0 hrs</div>
     </div>
-    <div class="summary-box" style="border-left-color: #7c3aed;">
-      <div class="summary-lbl">Shift 2 (14:30 PM – 23:00 PM)</div>
+    <div class="summary-box" id="sumShift2Box" style="border-left-color: var(--shift2);">
+      <div class="summary-lbl" id="shift2Title">Shift 2 (02:30 PM – 11:00 PM)</div>
       <div class="summary-num" id="shift2Qty">0 nos</div>
       <div style="font-size: 10px; color: #64748b;" id="shift2Hours">0 hrs</div>
+    </div>
+    <div class="summary-box" id="sumShift3Box" style="border-left-color: var(--shift3);">
+      <div class="summary-lbl" id="shift3Title">Shift 3 (11:00 PM – 06:00 AM)</div>
+      <div class="summary-num" id="shift3Qty">0 nos</div>
+      <div style="font-size: 10px; color: #64748b;" id="shift3Hours">0 hrs</div>
     </div>
     <div class="summary-box" style="border-left-color: #16a34a;">
       <div class="summary-lbl">Total Completed</div>
@@ -165,19 +227,39 @@
     </div>
   </div>
 
+  <!-- Collapsible Fleet Drawer -->
   <div class="card no-print">
-    <div class="fleet-summary-bar" onclick="toggleFleetDrawer()">
-      <span style="font-size: 12px; font-weight: bold; color: var(--primary);">
-        ⚙️ Machine Fleet Status & Breakdown Controls (Click to Expand / Collapse)
-      </span>
-      <span id="drawerArrow" style="font-size: 12px; font-weight: bold; color: var(--accent);">▼ Show Fleet</span>
+    <div class="collapsible-header" onclick="toggleFleetDrawer()">
+      <span>⚙️ Machine Fleet Status & Breakdown Controls</span>
+      <span id="drawerArrow" style="color: var(--accent);">▼ Show Fleet</span>
     </div>
-    <div class="fleet-drawer" id="fleetDrawer">
+    <div class="drawer-content" id="fleetDrawer" style="display: none;">
       <div class="fleet-category-tabs" id="fleetTabs"></div>
       <div class="fleet-grid" id="machineGrid"></div>
     </div>
   </div>
 
+  <!-- Gantt Chart Timeline View -->
+  <div class="card no-print">
+    <div class="collapsible-header" onclick="toggleGanttDrawer()">
+      <span>📊 Timeline Gantt Chart (Floor View)</span>
+      <span id="ganttArrow" style="color: var(--accent);">▲ Hide Gantt</span>
+    </div>
+    <div class="drawer-content" id="ganttDrawer">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
+        <div class="fleet-category-tabs" id="ganttTabs" style="margin-bottom: 0;"></div>
+        <div style="display: flex; gap: 8px; font-size: 10px; align-items: center;">
+          <span><span style="display:inline-block; width:10px; height:10px; background:#2563eb; border-radius:2px;"></span> Planned</span>
+          <span><span style="display:inline-block; width:10px; height:10px; background:#f59e0b; border-radius:2px;"></span> Running</span>
+          <span><span style="display:inline-block; width:10px; height:10px; background:#16a34a; border-radius:2px;"></span> Completed</span>
+          <span><span style="display:inline-block; width:10px; height:10px; background:#dc2626; border-radius:2px;"></span> Delayed</span>
+        </div>
+      </div>
+      <div class="gantt-container" id="ganttView"></div>
+    </div>
+  </div>
+
+  <!-- Admin Planning Form with Shift Selection -->
   <div class="card no-print admin-only" id="planningFormCard">
     <h3 id="formTitle" style="font-size: 13px;">New Production Planning Entry</h3>
     <form id="jobForm">
@@ -222,6 +304,26 @@
             <option value="URGENT">⚡ Urgent (Preempt)</option>
           </select>
         </div>
+
+        <!-- NEW: Shift Pattern Selection for this Job -->
+        <div>
+          <label style="color: #0369a1;">Shift Pattern</label>
+          <select id="jobShiftPattern" onchange="onJobShiftPatternChanged()">
+            <option value="3_SHIFT_8H">8 Hrs x 3 Shifts (24h)</option>
+            <option value="2_SHIFT_8H">8 Hrs x 2 Shifts (17h)</option>
+            <option value="GEN_SHIFT_8H">General Shift (9:00-5:30)</option>
+            <option value="2_SHIFT_12H">12 Hrs x 2 Shifts (Urgent)</option>
+          </select>
+        </div>
+
+        <!-- NEW: Target Shift Selection -->
+        <div>
+          <label style="color: #0369a1;">Target Shift</label>
+          <select id="targetShiftSelect">
+            <!-- Dynamically populated based on jobShiftPattern -->
+          </select>
+        </div>
+
         <div>
           <label>Manual Start Time</label>
           <input type="datetime-local" id="manualStartTime">
@@ -243,22 +345,23 @@
             <option value="DRO">DRO Machines</option>
             <option value="OTHER">Lathe, Milling, EDM, Laser</option>
           </select>
-          <span style="font-size: 11px; color: #64748b;">(Select specific machines or leave blank for Auto Parallel Allocation)</span>
+          <span style="font-size: 11px; color: #64748b;">(Select specific machines or leave blank for Auto Allocation)</span>
         </div>
         <div class="sub-chips-container" id="filteredMachinesList"></div>
       </div>
 
       <div style="display: flex; gap: 8px; margin-top: 8px;">
         <button type="submit" class="btn-primary" id="submitBtn">Save to Cloud & Schedule</button>
-        <button type="button" class="btn-reset" id="cancelEditBtn" style="display:none;" onclick="cancelEdit()">Cancel Edit</button>
+        <button type="button" class="btn-nav" id="cancelEditBtn" style="display:none;" onclick="cancelEdit()">Cancel Edit</button>
       </div>
     </form>
   </div>
 
+  <!-- Plan Table -->
   <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center;">
       <h3 style="font-size: 13px;">Shop-Floor Production Execution Plan</h3>
-      <span style="font-size: 11px; color: #16a34a; font-weight: bold;">⚡ Cloud Real-Time Active</span>
+      <span style="font-size: 11px; color: #16a34a; font-weight: bold;" id="viewModeLabel">⚡ Live Active Plan</span>
     </div>
     <table id="outputPlan">
       <thead>
@@ -290,8 +393,8 @@
 // ==========================================
 // 1. SUPABASE CLOUD KEYS
 // ==========================================
-const SUPABASE_URL = "https://nwdnbalqioewcoygbgyp.supabase.co"; // Paste your URL
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im53ZG5iYWxxaW9ld2NveWdiZ3lwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4ODI1MjAsImV4cCI6MjEwNDQ1ODUyMH0.HMdDj4XhT3n99qQ2murxAz_LCiGS-DC-cYgblrVf5KA";              // Paste your anon key
+const SUPABASE_URL = "https://nwdnbalqioewcoygbgyp.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im53ZG5iYWxxaW9ld2NveWdiZ3lwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4ODI1MjAsImV4cCI6MjEwNDQ1ODUyMH0.HMdDj4XhT3n99qQ2murxAz_LCiGS-DC-cYgblrVf5KA";
 
 let supabaseClient = null;
 if (SUPABASE_URL.startsWith("https://") && !SUPABASE_URL.includes("yourprojectid")) {
@@ -328,11 +431,112 @@ FLEET_MAP.forEach(item => {
 let baseDate = new Date();
 if (baseDate.getHours() < 6) baseDate.setHours(6, 0, 0, 0);
 
+// Global Plant Shift Default
+let globalShiftSystem = '3_SHIFT_8H';
+
+// View Mode: 'ALL' or 'DATE'
+let viewMode = 'ALL';
+let activeFilterDate = new Date().toISOString().slice(0, 10);
+
 let jobsList = [];
 let machineStatus = {};
 ALL_MACHINES.forEach(m => machineStatus[m.id] = 'ACTIVE');
 
 let currentUser = null;
+
+function onGlobalShiftModeChanged() {
+  globalShiftSystem = document.getElementById('globalShiftMode').value;
+  document.getElementById('jobShiftPattern').value = globalShiftSystem;
+  onJobShiftPatternChanged();
+  updateShiftSummaryHeaders();
+  recalculateAndRender();
+}
+
+function updateShiftSummaryHeaders() {
+  const sum1 = document.getElementById('sumShift1Box');
+  const sum2 = document.getElementById('sumShift2Box');
+  const sum3 = document.getElementById('sumShift3Box');
+
+  if (globalShiftSystem === '3_SHIFT_8H') {
+    sum1.style.display = 'block'; sum2.style.display = 'block'; sum3.style.display = 'block';
+    document.getElementById('shift1Title').innerText = "Shift 1 (06:00 AM – 02:30 PM)";
+    document.getElementById('shift2Title').innerText = "Shift 2 (02:30 PM – 11:00 PM)";
+    document.getElementById('shift3Title').innerText = "Shift 3 (11:00 PM – 06:00 AM)";
+  } else if (globalShiftSystem === '2_SHIFT_8H') {
+    sum1.style.display = 'block'; sum2.style.display = 'block'; sum3.style.display = 'none';
+    document.getElementById('shift1Title').innerText = "Shift 1 (06:00 AM – 02:30 PM)";
+    document.getElementById('shift2Title').innerText = "Shift 2 (02:30 PM – 11:00 PM)";
+  } else if (globalShiftSystem === 'GEN_SHIFT_8H') {
+    sum1.style.display = 'block'; sum2.style.display = 'none'; sum3.style.display = 'none';
+    document.getElementById('shift1Title').innerText = "General Shift (09:00 AM – 05:30 PM)";
+  } else if (globalShiftSystem === '2_SHIFT_12H') {
+    sum1.style.display = 'block'; sum2.style.display = 'block'; sum3.style.display = 'none';
+    document.getElementById('shift1Title').innerText = "Shift 1 (06:00 AM – 06:00 PM)";
+    document.getElementById('shift2Title').innerText = "Shift 2 (06:00 PM – 06:00 AM)";
+  }
+}
+
+function onJobShiftPatternChanged() {
+  const pattern = document.getElementById('jobShiftPattern').value;
+  const select = document.getElementById('targetShiftSelect');
+  if (!select) return;
+
+  if (pattern === '3_SHIFT_8H') {
+    select.innerHTML = `
+      <option value="AUTO">Auto (Earliest Free)</option>
+      <option value="Shift 1">Shift 1 (Starts 06:00 AM)</option>
+      <option value="Shift 2">Shift 2 (Starts 02:30 PM)</option>
+      <option value="Shift 3">Shift 3 (Starts 11:00 PM)</option>
+    `;
+  } else if (pattern === '2_SHIFT_8H') {
+    select.innerHTML = `
+      <option value="AUTO">Auto (Earliest Free)</option>
+      <option value="Shift 1">Shift 1 (Starts 06:00 AM)</option>
+      <option value="Shift 2">Shift 2 (Starts 02:30 PM)</option>
+    `;
+  } else if (pattern === 'GEN_SHIFT_8H') {
+    select.innerHTML = `
+      <option value="AUTO">Auto (Earliest Free)</option>
+      <option value="Gen Shift">General Shift (Starts 09:00 AM)</option>
+    `;
+  } else if (pattern === '2_SHIFT_12H') {
+    select.innerHTML = `
+      <option value="AUTO">Auto (Earliest Free)</option>
+      <option value="Shift 1">Shift 1 (Starts 06:00 AM)</option>
+      <option value="Shift 2">Shift 2 (Starts 06:00 PM)</option>
+    `;
+  }
+}
+
+function toggleDateFilterMode() {
+  viewMode = document.getElementById('dateFilterMode').value;
+  const ctrls = document.getElementById('specificDateControls');
+  ctrls.style.display = (viewMode === 'DATE') ? 'flex' : 'none';
+  document.getElementById('viewModeLabel').innerText = (viewMode === 'DATE') ? `📅 Filtered: ${activeFilterDate}` : '⚡ Live Active Plan';
+  recalculateAndRender();
+}
+
+function setTodayDate() {
+  activeFilterDate = new Date().toISOString().slice(0, 10);
+  document.getElementById('selectedPlanDate').value = activeFilterDate;
+  recalculateAndRender();
+}
+
+function changeDateOffset(offset) {
+  let d = new Date(activeFilterDate);
+  d.setDate(d.getDate() + offset);
+  activeFilterDate = d.toISOString().slice(0, 10);
+  document.getElementById('selectedPlanDate').value = activeFilterDate;
+  recalculateAndRender();
+}
+
+function onDateFilterChanged() {
+  const val = document.getElementById('selectedPlanDate').value;
+  if (val) {
+    activeFilterDate = val;
+    recalculateAndRender();
+  }
+}
 
 function authenticateUser() {
   const u = document.getElementById('loginUser').value.trim().toLowerCase();
@@ -373,7 +577,6 @@ if (savedSession) {
   applyRolePermissions();
 }
 
-// Helper to get distinct available machines for parallel jobs
 function pickNextBestMachines(count, category) {
   let list = ALL_MACHINES;
   if (category && category !== 'ALL') {
@@ -384,7 +587,7 @@ function pickNextBestMachines(count, category) {
 }
 
 // ==========================================
-// 3. CLOUD CRUD DATABASE OPERATIONS
+// 3. CLOUD CRUD OPERATIONS
 // ==========================================
 async function fetchCloudJobs() {
   if (!supabaseClient) {
@@ -400,7 +603,6 @@ async function fetchCloudJobs() {
     return;
   }
 
-  // Preserve proper Line 1, Line 2 ordering
   jobsList = (data || []).map(row => ({
     id: row.id,
     projectCode: row.project_code,
@@ -413,6 +615,8 @@ async function fetchCloudJobs() {
     assignedMachine: row.assigned_machine,
     operator: row.operator,
     priority: row.priority,
+    shiftPattern: row.shift_pattern || globalShiftSystem,
+    targetShift: row.target_shift || 'AUTO',
     manualStartTime: row.manual_start_time,
     pieceStates: row.piece_states || {},
     pieceDelays: row.piece_delays || {},
@@ -420,7 +624,6 @@ async function fetchCloudJobs() {
     created_at: row.created_at
   }));
 
-  // Sort: URGENT first, then by Part Name line sequence so Line 1 is always before Line 2
   jobsList.sort((a, b) => {
     if (a.priority === 'URGENT' && b.priority !== 'URGENT') return -1;
     if (b.priority === 'URGENT' && a.priority !== 'URGENT') return 1;
@@ -492,7 +695,7 @@ async function updateJobInCloud(job) {
 }
 
 async function removeJobCloud(id) {
-  if (!confirm("Remove this job from cloud? Schedule will auto-shift.")) return;
+  if (!confirm("Remove this specific job from cloud? Schedule will auto-shift.")) return;
 
   if (!supabaseClient) {
     jobsList = jobsList.filter(j => j.id !== id);
@@ -503,21 +706,6 @@ async function removeJobCloud(id) {
 
   const { error } = await supabaseClient.from('vmc_production_jobs').delete().eq('id', id);
   if (error) alert("Cloud delete error: " + error.message);
-  else fetchCloudJobs();
-}
-
-async function clearAllJobsCloud() {
-  if (!confirm("Reset entire cloud schedule? This clears all jobs online.")) return;
-
-  if (!supabaseClient) {
-    jobsList = [];
-    localStorage.removeItem('VMC_CLOUD_BACKUP');
-    recalculateAndRender();
-    return;
-  }
-
-  const { error } = await supabaseClient.from('vmc_production_jobs').delete().neq('id', 'dummy');
-  if (error) alert("Cloud reset error: " + error.message);
   else fetchCloudJobs();
 }
 
@@ -559,6 +747,15 @@ function toggleFleetDrawer() {
   arrow.innerText = isHidden ? '▲ Hide Fleet' : '▼ Show Fleet';
 }
 
+let activeGanttTab = 'VMC';
+function toggleGanttDrawer() {
+  const drawer = document.getElementById('ganttDrawer');
+  const arrow = document.getElementById('ganttArrow');
+  const isHidden = drawer.style.display === 'none' || drawer.style.display === '';
+  drawer.style.display = isHidden ? 'block' : 'none';
+  arrow.innerText = isHidden ? '▲ Hide Gantt' : '▼ Show Gantt';
+}
+
 function initFleetTabs() {
   const tabsContainer = document.getElementById('fleetTabs');
   tabsContainer.innerHTML = '';
@@ -584,30 +781,143 @@ function initFleetTabs() {
   });
 }
 
-function advanceTimeWithBreaks(startTime, durationMinutes) {
+function initGanttTabs() {
+  const tabsContainer = document.getElementById('ganttTabs');
+  tabsContainer.innerHTML = '';
+  const tabs = [
+    { id: 'VMC', label: '25 VMCs' },
+    { id: 'SG', label: 'Surface Grinding' },
+    { id: 'WC', label: 'Wire Cut' },
+    { id: 'DRO', label: 'DRO' },
+    { id: 'OTHER', label: 'Other Fleet' },
+    { id: 'ALL', label: 'All Fleet' }
+  ];
+
+  tabs.forEach(t => {
+    let btn = document.createElement('button');
+    btn.className = `tab-btn ${t.id === activeGanttTab ? 'active' : ''}`;
+    btn.innerText = t.label;
+    btn.type = 'button';
+    btn.onclick = () => {
+      activeGanttTab = t.id;
+      initGanttTabs();
+      recalculateAndRender();
+    };
+    tabsContainer.appendChild(btn);
+  });
+}
+
+// ==========================================
+// 4. SHIFT & BREAK ADVANCEMENT ENGINE
+// ==========================================
+function advanceTimeWithBreaks(startTime, durationMinutes, pattern) {
   let current = new Date(startTime);
   let remaining = durationMinutes;
+  let p = pattern || globalShiftSystem;
 
   while (remaining > 0) {
     let hrs = current.getHours();
     let mins = current.getMinutes();
     let totalMins = hrs * 60 + mins;
 
-    if (totalMins >= 615 && totalMins < 630) {
-      current.setMinutes(current.getMinutes() + (630 - totalMins));
-      continue;
-    }
-    if (totalMins >= 750 && totalMins < 780) {
-      current.setMinutes(current.getMinutes() + (780 - totalMins));
-      continue;
-    }
-    if (totalMins >= 1230 && totalMins < 1260) {
-      current.setMinutes(current.getMinutes() + (1260 - totalMins));
-      continue;
-    }
-    if (totalMins >= 1350 && totalMins < 1365) {
-      current.setMinutes(current.getMinutes() + (1365 - totalMins));
-      continue;
+    if (p === 'GEN_SHIFT_8H') {
+      // General Shift: 09:00 (540) to 17:30 (1050)
+      // If outside general shift window, skip to next day 09:00
+      if (totalMins < 540) {
+        current.setHours(9, 0, 0, 0);
+        continue;
+      }
+      if (totalMins >= 1050) {
+        current.setDate(current.getDate() + 1);
+        current.setHours(9, 0, 0, 0);
+        continue;
+      }
+      // Breaks inside general shift:
+      // Morning Tea: 11:00 - 11:15 (660 - 675)
+      if (totalMins >= 660 && totalMins < 675) {
+        current.setMinutes(current.getMinutes() + (675 - totalMins));
+        continue;
+      }
+      // Lunch: 13:00 - 13:30 (780 - 810)
+      if (totalMins >= 780 && totalMins < 810) {
+        current.setMinutes(current.getMinutes() + (810 - totalMins));
+        continue;
+      }
+      // Evening Tea: 15:30 - 15:45 (930 - 945)
+      if (totalMins >= 930 && totalMins < 945) {
+        current.setMinutes(current.getMinutes() + (945 - totalMins));
+        continue;
+      }
+    } else if (p === '2_SHIFT_8H') {
+      // 2 Shifts 8H: 06:00 (360) to 23:00 (1380)
+      // Night closed: 23:00 to 06:00
+      if (totalMins < 360) {
+        current.setHours(6, 0, 0, 0);
+        continue;
+      }
+      if (totalMins >= 1380) {
+        current.setDate(current.getDate() + 1);
+        current.setHours(6, 0, 0, 0);
+        continue;
+      }
+      // Shift 1 Tea: 10:15 - 10:30 (615 - 630), Lunch: 12:00 - 12:30 (720 - 750)
+      if (totalMins >= 615 && totalMins < 630) {
+        current.setMinutes(current.getMinutes() + (630 - totalMins));
+        continue;
+      }
+      if (totalMins >= 720 && totalMins < 750) {
+        current.setMinutes(current.getMinutes() + (750 - totalMins));
+        continue;
+      }
+      // Shift 2 Dinner: 19:30 - 20:00 (1170 - 1200), Tea: 22:15 - 22:30 (1335 - 1350)
+      if (totalMins >= 1170 && totalMins < 1200) {
+        current.setMinutes(current.getMinutes() + (1200 - totalMins));
+        continue;
+      }
+      if (totalMins >= 1335 && totalMins < 1350) {
+        current.setMinutes(current.getMinutes() + (1350 - totalMins));
+        continue;
+      }
+    } else if (p === '3_SHIFT_8H') {
+      // 3 Shifts 8H: 24 Hours Running
+      if (totalMins >= 615 && totalMins < 630) {
+        current.setMinutes(current.getMinutes() + (630 - totalMins));
+        continue;
+      }
+      if (totalMins >= 720 && totalMins < 750) {
+        current.setMinutes(current.getMinutes() + (750 - totalMins));
+        continue;
+      }
+      if (totalMins >= 1170 && totalMins < 1200) {
+        current.setMinutes(current.getMinutes() + (1200 - totalMins));
+        continue;
+      }
+      if (totalMins >= 1335 && totalMins < 1350) {
+        current.setMinutes(current.getMinutes() + (1350 - totalMins));
+        continue;
+      }
+      if (totalMins >= 180 && totalMins < 195) {
+        current.setMinutes(current.getMinutes() + (195 - totalMins));
+        continue;
+      }
+    } else if (p === '2_SHIFT_12H') {
+      // 12 Hrs x 2 Shifts: 24 Hours
+      if (totalMins >= 615 && totalMins < 630) {
+        current.setMinutes(current.getMinutes() + (630 - totalMins));
+        continue;
+      }
+      if (totalMins >= 750 && totalMins < 780) {
+        current.setMinutes(current.getMinutes() + (780 - totalMins));
+        continue;
+      }
+      if (totalMins >= 1230 && totalMins < 1260) {
+        current.setMinutes(current.getMinutes() + (1260 - totalMins));
+        continue;
+      }
+      if (totalMins >= 1350 && totalMins < 1365) {
+        current.setMinutes(current.getMinutes() + (1365 - totalMins));
+        continue;
+      }
     }
 
     current.setMinutes(current.getMinutes() + 1);
@@ -616,9 +926,57 @@ function advanceTimeWithBreaks(startTime, durationMinutes) {
   return current;
 }
 
-function getShift(dt) {
+function getShift(dt, pattern) {
   let hrs = dt.getHours();
-  return (hrs >= 6 && hrs < 18) ? 'Shift 1' : 'Shift 2';
+  let mins = dt.getMinutes();
+  let timeInMin = hrs * 60 + mins;
+  let p = pattern || globalShiftSystem;
+
+  if (p === 'GEN_SHIFT_8H') {
+    return 'Gen Shift';
+  } else if (p === '3_SHIFT_8H') {
+    if (timeInMin >= 360 && timeInMin < 870) return 'Shift 1';
+    if (timeInMin >= 870 && timeInMin < 1380) return 'Shift 2';
+    return 'Shift 3';
+  } else if (p === '2_SHIFT_8H') {
+    if (timeInMin >= 360 && timeInMin < 870) return 'Shift 1';
+    return 'Shift 2';
+  } else if (p === '2_SHIFT_12H') {
+    return (hrs >= 6 && hrs < 18) ? 'Shift 1' : 'Shift 2';
+  }
+  return 'Shift 1';
+}
+
+function alignTimeToTargetShift(time, targetShift, pattern) {
+  if (!targetShift || targetShift === 'AUTO') return new Date(time);
+
+  let aligned = new Date(time);
+  let p = pattern || globalShiftSystem;
+
+  if (p === 'GEN_SHIFT_8H') {
+    aligned.setHours(9, 0, 0, 0);
+    if (aligned < time) aligned.setDate(aligned.getDate() + 1);
+  } else if (p === '3_SHIFT_8H' || p === '2_SHIFT_8H') {
+    if (targetShift === 'Shift 1') {
+      aligned.setHours(6, 0, 0, 0);
+      if (aligned < time) aligned.setDate(aligned.getDate() + 1);
+    } else if (targetShift === 'Shift 2') {
+      aligned.setHours(14, 30, 0, 0);
+      if (aligned < time) aligned.setDate(aligned.getDate() + 1);
+    } else if (targetShift === 'Shift 3') {
+      aligned.setHours(23, 0, 0, 0);
+      if (aligned < time) aligned.setDate(aligned.getDate() + 1);
+    }
+  } else if (p === '2_SHIFT_12H') {
+    if (targetShift === 'Shift 1') {
+      aligned.setHours(6, 0, 0, 0);
+      if (aligned < time) aligned.setDate(aligned.getDate() + 1);
+    } else if (targetShift === 'Shift 2') {
+      aligned.setHours(18, 0, 0, 0);
+      if (aligned < time) aligned.setDate(aligned.getDate() + 1);
+    }
+  }
+  return aligned;
 }
 
 function formatHourRange(st, et) {
@@ -680,21 +1038,23 @@ async function updatePieceRemarks(jobId, pieceNo, val) {
 }
 
 // ==========================================
-// 4. CASCADE ENGINE & PRECISE RENDER
+// 5. CASCADE ENGINE & RENDER
 // ==========================================
 function recalculateAndRender() {
   let machineTimes = {};
-  ALL_MACHINES.forEach(m => machineTimes[m.id] = new Date(baseDate));
+  let ganttData = {};
+
+  ALL_MACHINES.forEach(m => {
+    machineTimes[m.id] = new Date(baseDate);
+    ganttData[m.id] = [];
+  });
 
   const tbody = document.getElementById('planTableBody');
   tbody.innerHTML = '';
 
-  let s1Count = 0, s2Count = 0, s1Mins = 0, s2Mins = 0;
-  let totalPieces = 0, completedPieces = 0;
-
-  if (jobsList.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="16" style="text-align:center; padding: 20px; color:#94a3b8;">No jobs found. Add jobs above.</td></tr>';
-  }
+  let s1Count = 0, s2Count = 0, s3Count = 0;
+  let s1Mins = 0, s2Mins = 0, s3Mins = 0;
+  let totalPiecesDisplayed = 0, completedPiecesDisplayed = 0;
 
   let currentSI = 1;
 
@@ -709,11 +1069,18 @@ function recalculateAndRender() {
       job.assignedMachine = targetMachine;
     }
 
+    let pattern = job.shiftPattern || globalShiftSystem;
     let currentStart = new Date(machineTimes[targetMachine] || baseDate);
     if (job.manualStartTime) {
       let mStart = new Date(job.manualStartTime);
       if (mStart > currentStart) currentStart = mStart;
     }
+
+    if (job.targetShift && job.targetShift !== 'AUTO') {
+      currentStart = alignTimeToTargetShift(currentStart, job.targetShift, pattern);
+    }
+
+    let jobPiecesToRender = [];
 
     for (let p = 1; p <= job.qty; p++) {
       let baseDuration = (p === 1) ? job.firstPcMins : job.cycleMins;
@@ -722,81 +1089,122 @@ function recalculateAndRender() {
       let status = job.pieceStates[p] || 'PLANNED';
 
       let start = new Date(currentStart);
-      let end = advanceTimeWithBreaks(start, effectiveDuration);
+      let end = advanceTimeWithBreaks(start, effectiveDuration, pattern);
 
-      let shift = getShift(end);
-      if (shift === 'Shift 1') { s1Count++; s1Mins += effectiveDuration; }
-      else { s2Count++; s2Mins += effectiveDuration; }
+      let pieceEndDateStr = formatDate(end);
+      let shift = getShift(end, pattern);
 
-      totalPieces++;
-      if (status === 'COMPLETED') completedPieces++;
+      let shouldShow = (viewMode === 'ALL') || (pieceEndDateStr === activeFilterDate);
 
-      let isFirstRow = (p === 1);
-      let row = document.createElement('tr');
-      row.className = (isFirstRow ? 'group-start ' : '') + 
-                      (job.priority === 'URGENT' ? 'urgent-row ' : '') + 
-                      (status === 'RUNNING' ? 'status-running ' : '') + 
-                      (status === 'COMPLETED' ? 'status-completed ' : '') +
-                      (delayMins > 0 ? 'status-delayed ' : '');
+      if (shouldShow) {
+        if (shift === 'Shift 1' || shift === 'Gen Shift') { s1Count++; s1Mins += effectiveDuration; }
+        else if (shift === 'Shift 2') { s2Count++; s2Mins += effectiveDuration; }
+        else if (shift === 'Shift 3') { s3Count++; s3Mins += effectiveDuration; }
 
-      let controlsHtml = `<div style="display: flex; gap: 3px; justify-content: center; align-items: center; flex-wrap: wrap;">`;
+        totalPiecesDisplayed++;
+        if (status === 'COMPLETED') completedPiecesDisplayed++;
 
-      if (isFirstRow && currentUser && currentUser.role === 'ADMIN') {
-        controlsHtml += `<button class="btn-action btn-edit" onclick="editJob('${job.id}')" title="Edit">Edit</button>`;
-        controlsHtml += `<button class="btn-action btn-del" onclick="removeJobCloud('${job.id}')" title="Delete">X</button>`;
+        jobPiecesToRender.push({
+          pieceNo: p,
+          duration: effectiveDuration,
+          start: start,
+          end: end,
+          dateStr: pieceEndDateStr,
+          shift: shift,
+          status: status,
+          delayMins: delayMins
+        });
+
+        if (ganttData[targetMachine]) {
+          ganttData[targetMachine].push({
+            part: job.partName,
+            piece: p,
+            status: status,
+            isDelayed: delayMins > 0,
+            time: formatHourRange(start, end)
+          });
+        }
       }
-
-      if (status !== 'COMPLETED') {
-        controlsHtml += `<button class="btn-start" onclick="setPieceStatus('${job.id}', ${p}, 'RUNNING')">Run</button>`;
-        controlsHtml += `<button class="btn-done" onclick="setPieceStatus('${job.id}', ${p}, 'COMPLETED')">Done</button>`;
-      } else {
-        controlsHtml += `<button class="btn-undo" onclick="setPieceStatus('${job.id}', ${p}, 'PLANNED')">Undo</button>`;
-      }
-      controlsHtml += `<button class="btn-delay" onclick="addManualDelay('${job.id}', ${p})">+Delay</button>`;
-      controlsHtml += `</div>`;
-
-      let currentRemark = job.pieceRemarks[p] || '';
-
-      row.innerHTML = `
-        <td style="text-align: center;">${isFirstRow ? currentSI : ''}</td>
-        <td><strong>${isFirstRow ? (job.projectCode || '-') : ''}</strong></td>
-        <td>${isFirstRow ? (job.projectName || '-') : ''}</td>
-        <td>${isFirstRow ? `<strong>${job.partName}</strong>` : ''}</td>
-        <td>${isFirstRow ? job.setting : ''}</td>
-        <td style="text-align: center;">${isFirstRow ? job.qty + ' nos' : ''}</td>
-        <td style="text-align: center;"><strong>#${p}</strong></td>
-        <td style="text-align: center;">${formatDuration(effectiveDuration)}</td>
-        <td style="text-align: center;">
-          <strong>${formatHourRange(start, end)}</strong>
-          ${delayMins > 0 ? `<span class="badge-delayed">+${delayMins}m</span>` : ''}
-        </td>
-        <td style="text-align: center;">${formatDate(end)}</td>
-        <td style="text-align: center;"><span style="font-size:10px; font-weight:bold;">${shift}</span></td>
-        <td style="text-align: center;"><strong style="color:var(--accent);">${targetMachine}</strong></td>
-        <td>${isFirstRow ? job.operator : ''}</td>
-        <td style="text-align: center;">
-          <span class="badge-status badge-${status.toLowerCase()}">${status}</span>
-        </td>
-        <td>
-          <input type="text" class="inline-remarks" value="${currentRemark}" placeholder="Type delay / notes..." onchange="updatePieceRemarks('${job.id}', ${p}, this.value)">
-        </td>
-        <td class="no-print" style="text-align: center;">${controlsHtml}</td>
-      `;
-      tbody.appendChild(row);
 
       currentStart = new Date(end);
     }
 
     machineTimes[targetMachine] = new Date(currentStart);
-    currentSI++;
+
+    if (jobPiecesToRender.length > 0) {
+      jobPiecesToRender.forEach((pc, idx) => {
+        let isFirstRow = (idx === 0);
+        let row = document.createElement('tr');
+        row.className = (isFirstRow ? 'group-start ' : '') + 
+                        (job.priority === 'URGENT' ? 'urgent-row ' : '') + 
+                        (pc.status === 'RUNNING' ? 'status-running ' : '') + 
+                        (pc.status === 'COMPLETED' ? 'status-completed ' : '') +
+                        (pc.delayMins > 0 ? 'status-delayed ' : '');
+
+        let controlsHtml = `<div style="display: flex; gap: 3px; justify-content: center; align-items: center; flex-wrap: wrap;">`;
+
+        if (isFirstRow && currentUser && currentUser.role === 'ADMIN') {
+          controlsHtml += `<button class="btn-action btn-edit" onclick="editJob('${job.id}')" title="Edit">Edit</button>`;
+          controlsHtml += `<button class="btn-action btn-del" onclick="removeJobCloud('${job.id}')" title="Delete">X</button>`;
+        }
+
+        if (pc.status !== 'COMPLETED') {
+          controlsHtml += `<button class="btn-start" onclick="setPieceStatus('${job.id}', ${pc.pieceNo}, 'RUNNING')">Run</button>`;
+          controlsHtml += `<button class="btn-done" onclick="setPieceStatus('${job.id}', ${pc.pieceNo}, 'COMPLETED')">Done</button>`;
+        } else {
+          controlsHtml += `<button class="btn-undo" onclick="setPieceStatus('${job.id}', ${pc.pieceNo}, 'PLANNED')">Undo</button>`;
+        }
+        controlsHtml += `<button class="btn-delay" onclick="addManualDelay('${job.id}', ${pc.pieceNo})">+Delay</button>`;
+        controlsHtml += `</div>`;
+
+        let currentRemark = job.pieceRemarks[pc.pieceNo] || '';
+        let shiftBadgeClass = pc.shift === 'Shift 1' ? 'badge-s1' : (pc.shift === 'Shift 2' ? 'badge-s2' : (pc.shift === 'Shift 3' ? 'badge-s3' : 'badge-gen'));
+
+        row.innerHTML = `
+          <td style="text-align: center;">${isFirstRow ? currentSI : ''}</td>
+          <td><strong>${isFirstRow ? (job.projectCode || '-') : ''}</strong></td>
+          <td>${isFirstRow ? (job.projectName || '-') : ''}</td>
+          <td>${isFirstRow ? `<strong>${job.partName}</strong>` : ''}</td>
+          <td>${isFirstRow ? job.setting : ''}</td>
+          <td style="text-align: center;">${isFirstRow ? job.qty + ' nos' : ''}</td>
+          <td style="text-align: center;"><strong>#${pc.pieceNo}</strong></td>
+          <td style="text-align: center;">${formatDuration(pc.duration)}</td>
+          <td style="text-align: center;">
+            <strong>${formatHourRange(pc.start, pc.end)}</strong>
+            ${pc.delayMins > 0 ? `<span class="badge-delayed">+${pc.delayMins}m</span>` : ''}
+          </td>
+          <td style="text-align: center;">${pc.dateStr}</td>
+          <td style="text-align: center;"><span class="badge-shift ${shiftBadgeClass}">${pc.shift}</span></td>
+          <td style="text-align: center;"><strong style="color:var(--accent);">${targetMachine}</strong></td>
+          <td>${isFirstRow ? job.operator : ''}</td>
+          <td style="text-align: center;">
+            <span class="badge-status badge-${pc.status.toLowerCase()}">${pc.status}</span>
+          </td>
+          <td>
+            <input type="text" class="inline-remarks" value="${currentRemark}" placeholder="Type delay / notes..." onchange="updatePieceRemarks('${job.id}', ${pc.pieceNo}, this.value)">
+          </td>
+          <td class="no-print" style="text-align: center;">${controlsHtml}</td>
+        `;
+        tbody.appendChild(row);
+      });
+      currentSI++;
+    }
   });
+
+  if (totalPiecesDisplayed === 0) {
+    tbody.innerHTML = `<tr><td colspan="16" style="text-align:center; padding: 25px; color:#94a3b8;">No jobs found for the selected view mode. Enter a new job above.</td></tr>`;
+  }
 
   document.getElementById('shift1Qty').innerText = `${s1Count} nos`;
   document.getElementById('shift1Hours').innerText = `${(s1Mins/60).toFixed(1)} hrs`;
   document.getElementById('shift2Qty').innerText = `${s2Count} nos`;
   document.getElementById('shift2Hours').innerText = `${(s2Mins/60).toFixed(1)} hrs`;
-  document.getElementById('completedQtySum').innerText = `${completedPieces} / ${totalPieces} Done`;
-  document.getElementById('completionRate').innerText = `${totalPieces > 0 ? Math.round((completedPieces / totalPieces) * 100) : 0}% Achieved`;
+  if (globalShiftSystem === '3_SHIFT_8H') {
+    document.getElementById('shift3Qty').innerText = `${s3Count} nos`;
+    document.getElementById('shift3Hours').innerText = `${(s3Mins/60).toFixed(1)} hrs`;
+  }
+  document.getElementById('completedQtySum').innerText = `${completedPiecesDisplayed} / ${totalPiecesDisplayed} Done`;
+  document.getElementById('completionRate').innerText = `${totalPiecesDisplayed > 0 ? Math.round((completedPiecesDisplayed / totalPiecesDisplayed) * 100) : 0}%`;
 
   let breakdownCount = Object.values(machineStatus).filter(s => s === 'BREAKDOWN').length;
   document.getElementById('fleetHealthCount').innerText = `${ALL_MACHINES.length - breakdownCount} / ${ALL_MACHINES.length} Online`;
@@ -819,10 +1227,61 @@ function recalculateAndRender() {
       </div>
     `;
   });
+
+  renderLiveGantt(ganttData);
+}
+
+function renderLiveGantt(ganttData) {
+  const container = document.getElementById('ganttView');
+  container.innerHTML = '';
+
+  let filteredList = ALL_MACHINES;
+  if (activeGanttTab !== 'ALL') {
+    filteredList = ALL_MACHINES.filter(m => m.group === activeGanttTab);
+  }
+
+  filteredList.forEach(m => {
+    let pieces = ganttData[m.id] || [];
+    let row = document.createElement('div');
+    row.className = 'gantt-row';
+
+    let label = document.createElement('div');
+    label.className = 'gantt-label';
+    label.innerText = m.id;
+
+    let track = document.createElement('div');
+    track.className = 'gantt-track';
+
+    if (machineStatus[m.id] === 'BREAKDOWN') {
+      track.style.background = '#fecaca';
+      track.innerHTML = '<span style="color:#991b1b; font-weight:bold; font-size:10px; margin:auto;">⚠️ MACHINE IN BREAKDOWN</span>';
+    } else if (pieces.length === 0) {
+      track.innerHTML = '<span style="color:#94a3b8; font-size:10px; margin:auto;">No Jobs in this View</span>';
+    } else {
+      pieces.forEach(p => {
+        let bar = document.createElement('div');
+        bar.className = 'gantt-bar';
+        bar.style.width = `${Math.max(10, 100 / pieces.length)}%`;
+
+        if (p.isDelayed) bar.style.background = '#dc2626';
+        else if (p.status === 'COMPLETED') bar.style.background = '#16a34a';
+        else if (p.status === 'RUNNING') bar.style.background = '#f59e0b';
+        else bar.style.background = '#2563eb';
+
+        bar.title = `${p.part} #${p.piece} (${p.time}) [${p.status}]`;
+        bar.innerText = `#${p.piece} ${p.part}`;
+        track.appendChild(bar);
+      });
+    }
+
+    row.appendChild(label);
+    row.appendChild(track);
+    container.appendChild(row);
+  });
 }
 
 // ==========================================
-// 5. SUBMISSION WITH PARALLEL ALLOCATION
+// 6. SUBMISSION WITH SHIFT PATTERN SELECTION
 // ==========================================
 document.getElementById('jobForm').addEventListener('submit', async function(e) {
   e.preventDefault();
@@ -837,6 +1296,8 @@ document.getElementById('jobForm').addEventListener('submit', async function(e) 
   const cycleMins = parseInt(document.getElementById('cycleMins').value);
   const operator = document.getElementById('operator').value;
   const priority = document.getElementById('priority').value;
+  const shiftPattern = document.getElementById('jobShiftPattern').value;
+  const targetShift = document.getElementById('targetShiftSelect').value;
   const manualStartTime = document.getElementById('manualStartTime').value;
 
   const checkedBoxes = Array.from(document.querySelectorAll('input[name="selectedMachines"]:checked')).map(cb => cb.value);
@@ -857,6 +1318,8 @@ document.getElementById('jobForm').addEventListener('submit', async function(e) 
         cycleMins,
         operator,
         priority,
+        shiftPattern,
+        targetShift,
         manualStartTime,
         assignedMachine: checkedBoxes.length > 0 ? checkedBoxes[0] : (jobsList[jobIdx].assignedMachine || 'VMC-01')
       };
@@ -866,12 +1329,10 @@ document.getElementById('jobForm').addEventListener('submit', async function(e) 
     return;
   }
 
-  // Pick distinct machines for parallel execution
   let assignedMachines = [];
   if (checkedBoxes.length >= parallelCount) {
     assignedMachines = checkedBoxes.slice(0, parallelCount);
   } else {
-    // Auto assign distinct active machines (e.g. VMC-01, VMC-02)
     const category = document.getElementById('machineCategoryFilter').value;
     assignedMachines = pickNextBestMachines(parallelCount, category);
   }
@@ -885,8 +1346,6 @@ document.getElementById('jobForm').addEventListener('submit', async function(e) 
     if (assignedQty <= 0) continue;
 
     let assignedMachine = assignedMachines[i] || `VMC-${i + 1 < 10 ? '0' + (i + 1) : i + 1}`;
-    
-    // Unique ID for each line to prevent button interference
     let uniqueId = 'job_' + Date.now() + '_L' + (i + 1) + '_' + Math.random().toString(36).substring(2, 9);
 
     newSubJobs.push({
@@ -901,6 +1360,8 @@ document.getElementById('jobForm').addEventListener('submit', async function(e) 
       assignedMachine: assignedMachine,
       operator,
       priority,
+      shiftPattern,
+      targetShift,
       manualStartTime,
       pieceStates: {},
       pieceDelays: {},
@@ -926,6 +1387,9 @@ function editJob(id) {
   document.getElementById('cycleMins').value = job.cycleMins;
   document.getElementById('operator').value = job.operator;
   document.getElementById('priority').value = job.priority;
+  document.getElementById('jobShiftPattern').value = job.shiftPattern || globalShiftSystem;
+  onJobShiftPatternChanged();
+  document.getElementById('targetShiftSelect').value = job.targetShift || 'AUTO';
   document.getElementById('manualStartTime').value = job.manualStartTime || '';
   document.getElementById('parallelCount').value = 1;
 
@@ -955,6 +1419,9 @@ function resetForm() {
   document.getElementById('firstPcMins').value = 120;
   document.getElementById('cycleMins').value = 60;
   document.getElementById('parallelCount').value = 1;
+  document.getElementById('jobShiftPattern').value = globalShiftSystem;
+  onJobShiftPatternChanged();
+  document.getElementById('targetShiftSelect').value = 'AUTO';
   document.querySelectorAll('input[name="selectedMachines"]').forEach(cb => cb.checked = false);
 }
 
@@ -977,6 +1444,9 @@ function exportToExcel() {
 
 renderFilteredMachines();
 initFleetTabs();
+initGanttTabs();
+updateShiftSummaryHeaders();
+onJobShiftPatternChanged();
 if (currentUser) fetchCloudJobs();
 </script>
 
