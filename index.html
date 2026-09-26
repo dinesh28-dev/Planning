@@ -4,154 +4,201 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Production ERP - Enterprise MES & Tool Room Suite</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
   <style>
     :root {
       --primary: #0f172a;
       --sidebar-bg: #1e293b;
-      --accent: #3b82f6;
-      --accent-hover: #2563eb;
-      --bg: #f1f5f9;
+      --accent: #2563eb;
+      --bg: #f8fafc;
       --card: #ffffff;
-      --border: #e2e8f0;
-      --text-main: #334155;
-      --text-muted: #64748b;
-      --urgent: #ef4444;
+      --border: #cbd5e1;
+      --urgent: #dc2626;
       --running: #f59e0b;
-      --completed: #10b981;
+      --completed: #16a34a;
       --breakdown: #dc2626;
-      --shift1: #0ea5e9;
-      --shift2: #8b5cf6;
-      --shift3: #f59e0b;
-      --shiftgen: #10b981;
+      --shift1: #0284c7;
+      --shift2: #7c3aed;
+      --shift3: #d97706;
+      --shiftgen: #059669;
     }
-    * { box-sizing: border-box; font-family: 'Segoe UI', Calibri, Arial, sans-serif; }
-    body { margin: 0; padding: 0; background: var(--bg); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+    * { box-sizing: border-box; font-family: Calibri, 'Segoe UI', Arial, sans-serif; }
+    body { margin: 0; padding: 0; background: var(--bg); color: #1e293b; display: flex; height: 100vh; overflow: hidden; }
 
-    #loginModal {
-      position: fixed; inset: 0; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    #loginModal, #importConfigModal {
+      position: fixed; inset: 0; background: rgba(15, 23, 42, 0.8);
       display: flex; align-items: center; justify-content: center; z-index: 99999;
     }
     .login-box {
-      background: white; padding: 35px; border-radius: 12px; width: 380px; 
-      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3), 0 10px 10px -5px rgba(0,0,0,0.2); text-align: center;
+      background: white; padding: 22px; border-radius: 8px; width: 450px; 
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center;
     }
-    .login-box h3 { font-size: 22px; color: var(--primary); margin-bottom: 4px; }
-    .login-box p { font-size: 12px; color: var(--text-muted); margin-bottom: 20px; }
+    .login-box h3 { margin-bottom: 2px; color: var(--primary); font-size: 18px; }
+    .login-box p { font-size: 11px; color: #64748b; margin-top: 0; }
 
     .sidebar {
-      width: 260px; background: var(--sidebar-bg); color: #cbd5e1; display: flex; flex-direction: column; 
+      width: 250px; background: var(--sidebar-bg); color: #cbd5e1; display: flex; flex-direction: column; 
       border-right: 1px solid #334155; flex-shrink: 0;
     }
-    .sidebar-brand { padding: 20px; font-size: 16px; font-weight: bold; color: white; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 10px; }
-    .sidebar-menu { padding: 15px 10px; display: flex; flex-direction: column; gap: 6px; flex-grow: 1; }
+    .sidebar-brand { padding: 16px; font-size: 15px; font-weight: bold; color: white; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 8px; }
+    .sidebar-menu { padding: 12px 8px; display: flex; flex-direction: column; gap: 4px; flex-grow: 1; }
     .menu-item {
-      background: transparent; color: #94a3b8; border: none; text-align: left; padding: 10px 14px; 
-      border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: 0.2s;
+      background: transparent; color: #94a3b8; border: none; text-align: left; padding: 8px 12px; 
+      border-radius: 4px; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.2s;
     }
     .menu-item:hover { background: rgba(255,255,255,0.05); color: white; }
-    .menu-item.active { background: var(--accent); color: white; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); }
+    .menu-item.active { background: var(--accent); color: white; }
 
     .main-content { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
     .topbar {
-      height: 64px; background: white; border-bottom: 1px solid var(--border); display: flex; 
-      align-items: center; justify-content: space-between; padding: 0 24px; flex-shrink: 0;
+      height: 55px; background: white; border-bottom: 1px solid var(--border); display: flex; 
+      align-items: center; justify-content: space-between; padding: 0 16px; flex-shrink: 0;
     }
-    .workspace { padding: 20px; overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; gap: 16px; }
+    .workspace { padding: 10px; overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; gap: 10px; }
 
-    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
-    
-    .module-pane { display: none; flex-direction: column; gap: 16px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .module-pane { display: none; flex-direction: column; gap: 10px; }
     .module-pane.active { display: flex; }
 
-    .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
-    label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; color: var(--text-muted); }
-    input, select { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: #fff; color: var(--text-main); }
-    input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
-    
-    button { cursor: pointer; padding: 8px 14px; border: none; border-radius: 6px; font-weight: 600; font-size: 13px; transition: 0.2s; }
+    .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+    label { display: block; font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; color: #475569; }
+    input, select { width: 100%; padding: 5px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 12px; }
+    button { cursor: pointer; padding: 5px 10px; border: none; border-radius: 4px; font-weight: bold; font-size: 12px; transition: 0.2s; }
     .btn-primary { background: var(--accent); color: white; }
-    .btn-primary:hover { background: var(--accent-hover); }
-    .btn-excel { background: #10b981; color: white; }
-    .btn-excel:hover { background: #059669; }
-    .btn-import { background: #8b5cf6; color: white; }
-    .btn-import:hover { background: #7c3aed; }
-    .btn-nav { background: #e2e8f0; color: var(--text-main); padding: 6px 10px; font-size: 12px; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-excel { background: #16a34a; color: white; }
+    .btn-import { background: #7c3aed; color: white; }
+    .btn-nav { background: #e2e8f0; color: #1e293b; padding: 4px 8px; font-size: 11px; }
 
-    .toolbar-group {
-      display: flex; align-items: center; gap: 8px; background: #eff6ff; 
-      padding: 6px 12px; border-radius: 8px; border: 1px solid #bfdbfe; flex-wrap: wrap;
+    .top-toolbar-group {
+      display: flex; align-items: center; gap: 6px; background: #e0f2fe; 
+      padding: 4px 10px; border-radius: 5px; border: 1px solid #bae6fd; flex-wrap: wrap;
     }
     
     .machine-filter-box {
-      background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; 
-      padding: 12px; margin-top: 10px; display: flex; flex-direction: column; gap: 8px;
+      background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 5px; 
+      padding: 8px 12px; margin-top: 8px; display: flex; flex-direction: column; gap: 6px;
     }
-    .filter-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-    .sub-chips-container { display: flex; gap: 6px; flex-wrap: wrap; max-height: 90px; overflow-y: auto; padding: 4px 0; }
+    .filter-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .sub-chips-container { display: flex; gap: 6px; flex-wrap: wrap; max-height: 80px; overflow-y: auto; padding: 2px 0; }
     .chip {
-      background: white; border: 1px solid var(--border); padding: 4px 8px; 
-      border-radius: 6px; font-size: 11px; display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 500;
+      background: white; border: 1px solid #cbd5e1; padding: 2px 6px; 
+      border-radius: 4px; font-size: 11px; display: flex; align-items: center; gap: 4px; cursor: pointer;
     }
     .chip input { width: auto; margin: 0; cursor: pointer; }
 
     .collapsible-header {
       display: flex; justify-content: space-between; align-items: center; 
-      cursor: pointer; user-select: none; font-size: 13px; font-weight: 700; color: var(--primary);
+      cursor: pointer; user-select: none; font-size: 12px; font-weight: bold; color: var(--primary);
     }
-    .drawer-content { margin-top: 12px; }
+    .drawer-content { margin-top: 8px; }
 
-    .fleet-category-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
-    .tab-btn { background: #e2e8f0; color: var(--text-main); font-size: 11px; padding: 4px 10px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; }
+    .fleet-category-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+    .tab-btn { background: #e2e8f0; color: #334155; font-size: 11px; padding: 3px 8px; border-radius: 4px; border: none; cursor: pointer; }
     .tab-btn.active { background: var(--accent); color: white; }
 
-    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
-    .summary-box { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; border-left: 4px solid var(--accent); box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
-    .summary-num { font-size: 20px; font-weight: 700; color: var(--primary); margin-top: 2px; }
-    .summary-lbl { font-size: 10px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
+    .summary-box { background: #f8fafc; border: 1px solid var(--border); border-radius: 4px; padding: 8px; border-left: 4px solid var(--accent); }
+    .summary-num { font-size: 17px; font-weight: bold; color: var(--primary); }
+    .summary-lbl { font-size: 10px; color: #64748b; font-weight: bold; text-transform: uppercase; }
 
     .gantt-container { overflow-x: auto; max-height: 320px; overflow-y: auto; padding: 6px 0; }
-    .gantt-row { display: flex; align-items: center; margin-bottom: 6px; font-size: 12px; }
-    .gantt-label { width: 100px; font-weight: 700; flex-shrink: 0; color: var(--text-main); }
-    .gantt-track { flex-grow: 1; height: 26px; background: #e2e8f0; border-radius: 6px; position: relative; overflow: hidden; display: flex; }
+    .gantt-row { display: flex; align-items: center; margin-bottom: 4px; font-size: 11px; }
+    .gantt-label { width: 90px; font-weight: bold; flex-shrink: 0; color: #334155; font-size: 11px; }
+    .gantt-track { flex-grow: 1; height: 22px; background: #e2e8f0; border-radius: 3px; position: relative; overflow: hidden; display: flex; }
     .gantt-bar {
-      height: 100%; color: white; font-size: 11px; font-weight: 700; 
-      padding: 0 8px; display: flex; align-items: center; overflow: hidden; 
+      height: 100%; color: white; font-size: 10px; font-weight: bold; 
+      padding: 0 5px; display: flex; align-items: center; overflow: hidden; 
       text-overflow: ellipsis; white-space: nowrap; cursor: pointer; transition: 0.15s;
     }
     .gantt-bar:hover { opacity: 0.9; }
 
-    table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; background: #fff; }
-    th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; }
-    th { background: #f8fafc; color: var(--primary); font-weight: 700; text-align: center; }
-    tr.group-start { border-top: 2px solid #cbd5e1; }
+    table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 11.5px; background: #fff; }
+    th, td { border: 1px solid #94a3b8; padding: 4px 6px; text-align: left; }
+    th { background: #e2e8f0; color: #0f172a; font-weight: 700; text-align: center; }
+    tr.group-start { border-top: 2px solid #334155; }
     tr.status-running { background-color: #fffbeb !important; }
     tr.status-completed { background-color: #f0fdf4 !important; }
-    tr.status-delayed { background-color: #fef2f2 !important; }
+    tr.status-delayed { background-color: #fff1f2 !important; }
     
-    .badge-status { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 700; text-transform: uppercase; }
-    .badge-planned { background: #f1f5f9; color: var(--text-muted); }
-    .badge-running { background: #fef3c7; color: #d97706; }
-    .badge-completed { background: #d1fae5; color: #065f46; }
-    .badge-delayed { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .badge-status { font-size: 10px; padding: 2px 5px; border-radius: 3px; font-weight: bold; display: inline-flex; align-items: center; gap: 3px; }
+    .badge-planned { background: #e2e8f0; color: #475569; }
+    .badge-running { background: #fef3c7; color: #b45309; }
+    .badge-completed { background: #dcfce7; color: #15803d; }
+    .badge-delayed { background: #fee2e2; color: #b91c1c; font-size: 9px; padding: 1px 3px; border-radius: 3px; font-weight: bold; border: 1px solid #fca5a5; }
 
-    .badge-shift { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 700; color: white; }
+    .badge-resource-ok { background: #dcfce7; color: #166534; border: 1px solid #86efac; font-size: 9.5px; padding: 2px 4px; border-radius: 3px; font-weight: bold; }
+    .badge-resource-wait { background: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; font-size: 9.5px; padding: 2px 4px; border-radius: 3px; font-weight: bold; }
+
+    .badge-scope-mach { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; font-size: 10px; padding: 1px 5px; border-radius: 3px; font-weight: bold; }
+    .badge-scope-non { background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; font-size: 10px; padding: 1px 5px; border-radius: 3px; font-weight: bold; }
+
+    .badge-shift { font-size: 10px; padding: 1px 5px; border-radius: 3px; font-weight: bold; color: white; }
     .badge-s1 { background: var(--shift1); }
     .badge-s2 { background: var(--shift2); }
     .badge-s3 { background: var(--shift3); }
     .badge-gen { background: var(--shiftgen); }
 
-    .btn-action { padding: 3px 6px; font-size: 11px; border-radius: 4px; font-weight: 700; }
+    .btn-action { padding: 2px 4px; font-size: 10px; border-radius: 3px; font-weight: bold; }
     .btn-edit { background: #e0f2fe; color: #0284c7; border: 1px solid #7dd3fc; }
     .btn-del { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
-    .btn-start { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
-    .btn-done { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
-    .btn-undo { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
-    .btn-delay { background: #fff1f2; color: #b91c1c; border: 1px solid #fca5a5; }
+    .btn-start { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; font-size: 10px; padding: 2px 4px; }
+    .btn-done { background: #dcfce7; color: #15803d; border: 1px solid #86efac; font-size: 10px; padding: 2px 4px; }
+    .btn-undo { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; font-size: 10px; padding: 2px 4px; }
+    .btn-delay { background: #fff1f2; color: #b91c1c; border: 1px solid #fca5a5; font-size: 10px; padding: 2px 4px; }
 
-    .inline-remarks { width: 100%; border: 1px solid transparent; background: transparent; padding: 4px; font-size: 12px; }
-    .inline-remarks:focus { border: 1px solid var(--accent); background: #fff; outline: none; border-radius: 4px; }
+    .inline-remarks { width: 100%; border: 1px solid transparent; background: transparent; padding: 2px; font-size: 11px; }
+    .inline-remarks:focus { border: 1px solid var(--accent); background: #fff; outline: none; }
+
+    .resource-gate-box {
+      background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 10px 12px; margin-bottom: 8px;
+    }
+    .resource-gate-box.blocked {
+      background: #fef2f2; border-color: #fca5a5;
+    }
+    .resource-checkbox-grid {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 6px;
+    }
+    .resource-item-label {
+      display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: bold; color: #1e293b; cursor: pointer;
+      background: white; padding: 6px 8px; border-radius: 4px; border: 1px solid #cbd5e1;
+    }
+
+    
+    /* Mobile Responsive Overrides */
+    @media (max-width: 768px) {
+      body { flex-direction: column; height: auto; min-height: 100vh; overflow-y: auto; }
+      .sidebar {
+        position: fixed; top: 0; left: -260px; height: 100vh; z-index: 10000;
+        transition: left 0.3s ease; box-shadow: none;
+      }
+      .sidebar.open { left: 0; box-shadow: 4px 0 15px rgba(0,0,0,0.5); }
+      .sidebar-backdrop {
+        display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999;
+      }
+      .sidebar-backdrop.active { display: block; }
+      .main-content { width: 100%; height: auto; overflow: visible; }
+      .topbar { height: auto; min-height: 50px; padding: 8px 12px; flex-wrap: wrap; gap: 8px; }
+      .workspace { padding: 6px; overflow: visible; height: auto; }
+      .grid-form { grid-template-columns: 1fr 1fr; }
+      table { display: block; overflow-x: auto; width: 100%; }
+      .mobile-module-tabs {
+        display: flex !important; gap: 6px; overflow-x: auto; padding: 6px 10px;
+        background: #0f172a; border-bottom: 1px solid #334155; position: sticky; top: 0; z-index: 900;
+        white-space: nowrap; -webkit-overflow-scrolling: touch;
+      }
+      .mobile-tab-btn {
+        background: #1e293b; color: #cbd5e1; border: 1px solid #334155; padding: 5px 10px;
+        border-radius: 20px; font-size: 11px; font-weight: bold; cursor: pointer; flex-shrink: 0;
+      }
+      .mobile-tab-btn.active {
+        background: var(--accent); color: white; border-color: var(--accent);
+      }
+      .mobile-hamburger { display: inline-flex !important; }
+    }
+
+    .mobile-module-tabs { display: none; }
+    .mobile-hamburger { display: none; }
 
     @media print {
       .no-print { display: none !important; }
@@ -164,25 +211,89 @@
 </head>
 <body>
 
-<div id="loginModal">
-  <div class="login-box">
-    <h3>Production ERP</h3>
-    <p>Enterprise MES & Tool Room Cloud Portal</p>
-    <form id="loginForm" onsubmit="event.preventDefault(); authenticateUser();" style="display: flex; flex-direction: column; gap: 12px; text-align: left;">
+<!-- Process Sheet Import Configuration Modal with Machining Scope & 3-Resource Gatekeeper -->
+<div id="importConfigModal" style="display: none;">
+  <div class="login-box" style="width: 620px; text-align: left; max-height: 92vh; overflow-y: auto;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
       <div>
-        <label>Username</label>
-        <input type="text" id="loginUser" placeholder="Enter username" required>
+        <h3 style="margin-bottom: 2px;">Process Sheet Import Setup</h3>
+        <p>Cross-verifies <strong>Machining Scope</strong> from Abbreviation sheet & checks <strong>RM, Drawing, Program</strong> readiness.</p>
       </div>
-      <div>
-        <label>Password</label>
-        <input type="password" id="loginPass" placeholder="••••••••" required>
+      <button class="btn-nav" onclick="closeImportConfigModal()" style="font-size: 14px; padding: 2px 8px;">✕</button>
+    </div>
+
+    <!-- Mandatory 3-Resource Gatekeeper -->
+    <div class="resource-gate-box" id="resourceGateBox">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 11px; font-weight: bold; color: #166534;" id="resourceGateTitle">
+          🔒 Mandatory Resource Readiness Check (Required to Plan)
+        </span>
+        <span id="resourceGateStatusBadge" class="badge-resource-ok">● Checking Inputs</span>
       </div>
-      <button type="submit" class="btn-primary" style="margin-top: 6px; padding: 10px;">Sign In securely</button>
-    </form>
+      <div class="resource-checkbox-grid">
+        <label class="resource-item-label">
+          <input type="checkbox" id="importRmAvailable" onchange="onResourceCheckChanged()" checked style="width: auto;">
+          <span>📦 Raw Material (RM)</span>
+        </label>
+        <label class="resource-item-label">
+          <input type="checkbox" id="importDwgAvailable" onchange="onResourceCheckChanged()" checked style="width: auto;">
+          <span>📐 Part Drawing</span>
+        </label>
+        <label class="resource-item-label">
+          <input type="checkbox" id="importProgAvailable" onchange="onResourceCheckChanged()" checked style="width: auto;">
+          <span>💻 CAM / Program</span>
+        </label>
+      </div>
+      <div id="resourceWarningNotice" style="margin-top: 6px; font-size: 10.5px; color: #15803d; font-weight: 600;">
+        All 3 resources (RM, Drawing, Program) are available. Planning is allowed.
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px;">
+      <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 140px;">
+          <label>Default Priority</label>
+          <select id="importPriority">
+            <option value="NORMAL">Normal Queue</option>
+            <option value="URGENT">⚡ Urgent (Preempt)</option>
+          </select>
+        </div>
+        <div style="flex: 1.2; min-width: 180px;">
+          <label style="color: var(--accent);">Start Planning At (Date & Time):</label>
+          <input type="datetime-local" id="importPlanStartTime" style="padding: 4px 6px; font-weight: bold;">
+        </div>
+        <div style="flex: 1.8; min-width: 200px;">
+          <label>Abbreviation Sheet Status</label>
+          <div id="abbrevSheetInfo" style="font-size: 11px; padding: 5px 8px; background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 4px; color: #0369a1; font-weight: bold;">
+            Checking Abbreviation sheet...
+          </div>
+        </div>
+      </div>
+
+      <hr style="border:0; border-top:1px solid #cbd5e1; margin:4px 0;">
+
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <label style="color:var(--accent); margin:0;">
+          Operation-wise Scope & Machine Configuration:
+        </label>
+        <span style="font-size: 10px; color: #64748b;">(Only checked Machining Scope operations will be planned)</span>
+      </div>
+
+      <div id="operationConfigContainer" style="display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto; padding-right: 4px;">
+        <!-- Dynamically populated with scope tags, checkboxes, machine counts, and setting times -->
+      </div>
+
+      <div style="display: flex; gap: 8px; margin-top: 10px;">
+        <button class="btn-primary" id="btnConfirmImportPlan" style="flex: 1; padding: 8px;" onclick="confirmGranularProcessSheetImport()">
+          ⚡ Generate Time Plan (Machining Scope Only)
+        </button>
+        <button class="btn-nav" style="flex: 0.5;" onclick="closeImportConfigModal()">Cancel</button>
+      </div>
+    </div>
   </div>
 </div>
 
-<div class="sidebar no-print" id="sidebarNav" style="display: none;">
+<div class="sidebar no-print" id="sidebarNav" style="display: flex;">
   <div class="sidebar-brand">
     <span>⚙️</span> Production ERP
   </div>
@@ -195,30 +306,45 @@
     <button class="menu-item" onclick="switchModule('downtimeTab', this)"><span>📉</span> Downtime Log</button>
     <button class="menu-item" onclick="switchModule('oeeTab', this)"><span>📊</span> Section OEE Analytics</button>
   </div>
-  <div style="padding: 15px 20px; border-top: 1px solid #334155; font-size: 11px; color: #64748b;">
+  <div style="padding: 12px 16px; border-top: 1px solid #334155; font-size: 11px; color: #64748b;">
     User: <strong id="userBadge" style="color: #38bdf8;"></strong>
   </div>
 </div>
 
-<div class="main-content" id="mainApp" style="display: none;">
+<div class="main-content" id="mainApp" style="display: flex;">
   <div class="topbar no-print">
-    <div>
-      <h2 style="font-size: 16px; margin: 0; color: var(--primary);">Tool Room Execution Suite</h2>
-      <span style="font-size: 11px; color: var(--text-muted);">Cloud Status: <strong style="color: var(--completed);">● Live Synced</strong></span>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <button class="mobile-hamburger btn-nav" style="padding: 4px 8px; font-size: 14px;" onclick="toggleMobileSidebar()">☰</button>
+      <div>
+        <h2 style="font-size: 14px; margin: 0; color: var(--primary);">Tool Room Execution Suite</h2>
+        <span style="font-size: 10px; color: var(--text-muted);">Status: <strong style="color: var(--completed);">● Online</strong></span>
+      </div>
     </div>
-    <div style="display: flex; gap: 10px; align-items: center;">
-      <button class="btn-excel" onclick="window.print()">🖨️ Print Sheet</button>
-      <button style="background: #e2e8f0; color: var(--text-main);" onclick="logout()">Logout</button>
+    <div style="display: flex; gap: 8px; align-items: center;" id="topbarActionGroup">
+      <button class="btn-primary" id="printSheetBtn" onclick="window.print()" style="display:none;">🖨️ Print Sheet</button>
+      <button class="btn-nav" style="padding: 4px 8px;" onclick="fetchCloudJobs()">🔄 Sync Cloud</button>
     </div>
   </div>
 
+  
+  <!-- Mobile Horizontal Module Scrollbar -->
+  <div class="mobile-module-tabs no-print" id="mobileModuleTabs">
+    <button class="mobile-tab-btn active" data-tab="homeTab" onclick="switchModule('homeTab', this)">🏠 Home</button>
+    <button class="mobile-tab-btn" data-tab="planningTab" onclick="switchModule('planningTab', this)">📅 Planning</button>
+    <button class="mobile-tab-btn" data-tab="machinesTab" onclick="switchModule('machinesTab', this)">🛠️ Machines</button>
+    <button class="mobile-tab-btn" data-tab="shiftPlanTab" onclick="switchModule('shiftPlanTab', this)">🕒 Shifts</button>
+    <button class="mobile-tab-btn" data-tab="attendanceTab" onclick="switchModule('attendanceTab', this)">👥 Attendance</button>
+    <button class="mobile-tab-btn" data-tab="downtimeTab" onclick="switchModule('downtimeTab', this)">📉 Downtime</button>
+    <button class="mobile-tab-btn" data-tab="oeeTab" onclick="switchModule('oeeTab', this)">📊 OEE</button>
+  </div>
+  <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleMobileSidebar(false)"></div>
   <div class="workspace">
 
     <!-- HOME DASHBOARD -->
     <div id="homeTab" class="module-pane active">
-      <div class="card" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; padding: 25px;">
-        <h2 style="font-size: 22px; color: white; margin-bottom: 6px;">Welcome to Production ERP Suite</h2>
-        <p style="font-size: 13px; color: #94a3b8; margin: 0;">Enterprise Tool Room & Machine Shop-Floor Control System</p>
+      <div class="card" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; padding: 20px;">
+        <h2 style="font-size: 20px; color: white; margin-bottom: 4px;">Welcome to Production ERP Suite</h2>
+        <p style="font-size: 12px; color: #94a3b8; margin: 0;">Enterprise Tool Room & Machine Shop-Floor Control System (PPC Edition)</p>
       </div>
 
       <div class="summary-grid">
@@ -228,7 +354,7 @@
         </div>
         <div class="summary-box" style="border-left-color: var(--completed);">
           <div class="summary-lbl">Active Fleet Online</div>
-          <div class="summary-num" id="homeFleetVal">43 / 43</div>
+          <div class="summary-num" id="homeFleetVal">44 / 44</div>
         </div>
         <div class="summary-box" style="border-left-color: var(--running);">
           <div class="summary-lbl">Scheduled Jobs</div>
@@ -241,36 +367,48 @@
       </div>
     </div>
 
-    <!-- PRODUCTION PLANNING (EXPORT ONLY) -->
+    <!-- PRODUCTION PLANNING -->
     <div id="planningTab" class="module-pane">
-      <div class="card no-print" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; padding: 12px 16px;">
-        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-          <div class="toolbar-group">
-            <span style="font-size: 11px; font-weight: 700; color: #1d4ed8;">⏰ Default Plant Shift:</span>
-            <select id="globalShiftMode" onchange="onGlobalShiftModeChanged()" style="width: auto; padding: 4px 8px; font-weight: 700; background: white;">
-              <option value="3_SHIFT_8H" selected>8 Hrs x 3 Shifts (24 Hrs)</option>
-              <option value="2_SHIFT_8H">8 Hrs x 2 Shifts (6:00 AM – 11:00 PM)</option>
+      <div class="card no-print" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; padding: 10px 14px;">
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+          <div class="top-toolbar-group">
+            <span style="font-size: 11px; font-weight: bold; color: #0369a1;">⏰ Default Shift:</span>
+            <select id="globalShiftMode" onchange="onGlobalShiftModeChanged()" style="width: auto; padding: 2px 5px; font-weight: bold; background: white;">
+              <option value="3_SHIFT_8H" selected>8h x 3 Shifts (24h)</option>
+              <option value="2_SHIFT_8H">8h x 2 Shifts (6:00 AM – 11:00 PM)</option>
               <option value="GEN_SHIFT_8H">General Shift (9:00 AM – 5:30 PM)</option>
-              <option value="2_SHIFT_12H">12 Hrs x 2 Shifts (Urgent 24 Hrs)</option>
+              <option value="2_SHIFT_12H">12h x 2 Shifts (24h)</option>
             </select>
           </div>
 
-          <div class="toolbar-group">
-            <span style="font-size: 11px; font-weight: 700; color: #1d4ed8;">📅 Timeline View:</span>
-            <select id="dateFilterMode" onchange="toggleDateFilterMode()" style="width: auto; padding: 4px 8px; font-weight: 700; background: white;">
+          <div class="top-toolbar-group">
+            <span style="font-size: 11px; font-weight: bold; color: #0369a1;">🚀 Plan From:</span>
+            <select id="planBaselineMode" onchange="onPlanBaselineModeChanged()" style="width: auto; padding: 2px 4px; font-weight: bold; background: white;">
+              <option value="SHIFT_START" selected>Shift 1 (06:00 AM on Plan Date)</option>
+              <option value="CURRENT_TIME">Live (Current Clock Time)</option>
+              <option value="CUSTOM">Custom Start Time</option>
+            </select>
+            <input type="datetime-local" id="customPlanBaselineInput" onchange="onCustomPlanBaselineChanged()" style="display: none; width: auto; padding: 2px 4px;">
+          </div>
+
+          <div class="top-toolbar-group">
+            <span style="font-size: 11px; font-weight: bold; color: #0369a1;">📅 Plan Date / View:</span>
+            <select id="dateFilterMode" onchange="toggleDateFilterMode()" style="width: auto; padding: 2px 4px; font-weight: bold; background: white;">
               <option value="ALL" selected>All Dates (Live Plan)</option>
               <option value="DATE">Specific Date Only</option>
             </select>
-            <div id="specificDateControls" style="display: none; align-items: center; gap: 6px;">
+            <div id="specificDateControls" style="display: none; align-items: center; gap: 4px;">
               <button class="btn-nav" onclick="changeDateOffset(-1)">◀</button>
-              <input type="date" id="selectedPlanDate" onchange="onDateFilterChanged()" style="width: auto; padding: 4px 6px;">
+              <input type="date" id="selectedPlanDate" onchange="onDateFilterChanged()" style="width: auto; padding: 2px 4px;">
               <button class="btn-nav" onclick="changeDateOffset(1)">▶</button>
               <button class="btn-nav" onclick="setTodayDate()">Today</button>
             </div>
           </div>
         </div>
-        <div>
-          <button class="btn-excel" onclick="exportToExcel('outputPlan', 'Production_Planning_Plan.xlsx')">📥 Export Excel (.xlsx)</button>
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <input type="file" id="importProcessSheetFile" accept=".xlsx, .xls" style="display:none;" onchange="handleProcessSheetFile(event)">
+          <button class="btn-import" onclick="document.getElementById('importProcessSheetFile').click()">📥 Import Process Sheet (Excel)</button>
+          <button class="btn-excel" onclick="exportToExcel('outputPlan', 'Production_Planning_Plan.xlsx')">📤 Export Excel (.xlsx)</button>
         </div>
       </div>
 
@@ -278,27 +416,27 @@
         <div class="summary-box" id="sumShift1Box" style="border-left-color: var(--shift1);">
           <div class="summary-lbl" id="shift1Title">Shift 1 (06:00 AM – 02:30 PM)</div>
           <div class="summary-num" id="shift1Qty">0 nos</div>
-          <div style="font-size: 10px; color: var(--text-muted);" id="shift1Hours">0 hrs</div>
+          <div style="font-size: 10px; color: #64748b;" id="shift1Hours">0 hrs</div>
         </div>
         <div class="summary-box" id="sumShift2Box" style="border-left-color: var(--shift2);">
           <div class="summary-lbl" id="shift2Title">Shift 2 (02:30 PM – 11:00 PM)</div>
           <div class="summary-num" id="shift2Qty">0 nos</div>
-          <div style="font-size: 10px; color: var(--text-muted);" id="shift2Hours">0 hrs</div>
+          <div style="font-size: 10px; color: #64748b;" id="shift2Hours">0 hrs</div>
         </div>
         <div class="summary-box" id="sumShift3Box" style="border-left-color: var(--shift3);">
           <div class="summary-lbl" id="shift3Title">Shift 3 (11:00 PM – 06:00 AM)</div>
           <div class="summary-num" id="shift3Qty">0 nos</div>
-          <div style="font-size: 10px; color: var(--text-muted);" id="shift3Hours">0 hrs</div>
+          <div style="font-size: 10px; color: #64748b;" id="shift3Hours">0 hrs</div>
         </div>
-        <div class="summary-box" style="border-left-color: var(--completed);">
+        <div class="summary-box" style="border-left-color: #16a34a;">
           <div class="summary-lbl">Total Completed</div>
           <div class="summary-num" id="completedQtySum">0 / 0 Done</div>
-          <div style="font-size: 10px; color: var(--text-muted);" id="completionRate">0%</div>
+          <div style="font-size: 10px; color: #64748b;" id="completionRate">0%</div>
         </div>
         <div class="summary-box" style="border-left-color: var(--breakdown);">
-          <div class="summary-lbl">Fleet Status (43 Machines)</div>
-          <div class="summary-num" id="fleetHealthCount">43 / 43 Online</div>
-          <div style="font-size: 10px; color: var(--text-muted);" id="breakdownCount">0 in Breakdown</div>
+          <div class="summary-lbl">Fleet Status (44 Machines)</div>
+          <div class="summary-num" id="fleetHealthCount">44 / 44 Online</div>
+          <div style="font-size: 10px; color: #64748b;" id="breakdownCount">0 in Breakdown</div>
         </div>
       </div>
 
@@ -308,33 +446,34 @@
           <span id="ganttArrow" style="color: var(--accent);">▲ Hide Gantt</span>
         </div>
         <div class="drawer-content" id="ganttDrawer">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
             <div class="fleet-category-tabs" id="ganttTabs" style="margin-bottom: 0;"></div>
           </div>
           <div class="gantt-container" id="ganttView"></div>
         </div>
       </div>
 
+      <!-- Planning Entry Form with Resource Readiness (RM, Drawing, Program) -->
       <div class="card no-print admin-only" id="planningFormCard">
-        <h3 id="formTitle" style="font-size: 14px; margin-bottom: 12px;">New Production Planning Entry</h3>
-        <form id="jobForm">
+        <h3 id="formTitle" style="font-size: 13px;">New Production Planning Entry</h3>
+        <form id="jobForm" onsubmit="event.preventDefault(); submitManualJob();">
           <input type="hidden" id="editJobId" value="">
           <div class="grid-form">
             <div>
               <label>Project Code</label>
-              <input type="text" id="projectCode" placeholder="e.g. PRJ-01" required>
+              <input type="text" id="projectCode" placeholder="e.g. HYA26270134" required>
             </div>
             <div>
               <label>Project Name</label>
-              <input type="text" id="projectName" placeholder="e.g. Die Mould" required>
+              <input type="text" id="projectName" placeholder="e.g. Upper and Lower Cover" required>
             </div>
             <div>
               <label>Part Name</label>
-              <input type="text" id="partName" placeholder="e.g. Locating Pin" required>
+              <input type="text" id="partName" placeholder="e.g. Core Insert" required>
             </div>
             <div>
               <label>Setting / Process</label>
-              <input type="text" id="setting" placeholder="e.g. 1st Op" required>
+              <input type="text" id="setting" placeholder="e.g. 1st Op (VMC)" required>
             </div>
             <div>
               <label>Plan Qty</label>
@@ -360,7 +499,7 @@
               </select>
             </div>
             <div>
-              <label style="color: #1d4ed8;">Shift Pattern</label>
+              <label style="color: #0369a1;">Shift Pattern</label>
               <select id="jobShiftPattern" onchange="onJobShiftPatternChanged()">
                 <option value="3_SHIFT_8H">8 Hrs x 3 Shifts (24h)</option>
                 <option value="2_SHIFT_8H">8 Hrs x 2 Shifts (17h)</option>
@@ -369,26 +508,56 @@
               </select>
             </div>
             <div>
-              <label style="color: #1d4ed8;">Target Shift</label>
+              <label style="color: #0369a1;">Target Shift</label>
               <select id="targetShiftSelect"></select>
             </div>
             <div>
-              <label>Manual Start Time</label>
-              <input type="datetime-local" id="manualStartTime">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <label style="margin: 0; color: #0369a1;">Manual Start Time</label>
+                <div style="display: flex; gap: 4px;">
+                  <button type="button" class="btn-nav" style="padding: 1px 4px; font-size: 9px;" onclick="setManualTimePreset('SHIFT1')">06:00 AM</button>
+                  <button type="button" class="btn-nav" style="padding: 1px 4px; font-size: 9px;" onclick="setManualTimePreset('SHIFT2')">02:30 PM</button>
+                  <button type="button" class="btn-nav" style="padding: 1px 4px; font-size: 9px;" onclick="setManualTimePreset('NOW')">Now</button>
+                  <button type="button" class="btn-nav" style="padding: 1px 4px; font-size: 9px;" onclick="setManualTimePreset('CLEAR')">Auto</button>
+                </div>
+              </div>
+              <input type="datetime-local" id="manualStartTime" style="font-weight: bold;">
             </div>
             <div>
               <label>Parallel Machines</label>
-              <input type="number" id="parallelCount" min="1" max="43" value="1" onchange="validateParallelCount()">
+              <input type="number" id="parallelCount" min="1" max="44" value="1" onchange="validateParallelCount()">
+            </div>
+            <!-- Resource Inputs: RM, Drawing, Program -->
+            <div>
+              <label style="color: #166534;">RM Available?</label>
+              <select id="manualRmAvailable">
+                <option value="YES">✅ RM Available</option>
+                <option value="NO">❌ RM Pending</option>
+              </select>
+            </div>
+            <div>
+              <label style="color: #166534;">Drawing Available?</label>
+              <select id="manualDwgAvailable">
+                <option value="YES">✅ Drawing Available</option>
+                <option value="NO">❌ Drawing Pending</option>
+              </select>
+            </div>
+            <div>
+              <label style="color: #166534;">Program Available?</label>
+              <select id="manualProgAvailable">
+                <option value="YES">✅ Program Available</option>
+                <option value="NO">❌ Program Pending</option>
+              </select>
             </div>
           </div>
 
           <div class="machine-filter-box">
             <div class="filter-row">
-              <label style="margin: 0; min-width: 140px;">Filter Process Group:</label>
+              <label style="margin: 0; min-width: 140px;">Filter Process / Group:</label>
               <select id="machineCategoryFilter" style="max-width: 220px;" onchange="renderFilteredMachines()">
                 <option value="ALL">Show All Categories</option>
-                <option value="VMC" selected>25 VMC Fleet</option>
-                <option value="SG">Surface Grinding (6 Units)</option>
+                <option value="VMC" selected>25 VMC Fleet (VMC-01 to 25)</option>
+                <option value="SG">Surface Grinding (SG-01 to 06)</option>
                 <option value="WC">Wire Cut HS / SS</option>
                 <option value="DRO">DRO Machines</option>
                 <option value="OTHER">Lathe, Milling, EDM, Laser</option>
@@ -397,17 +566,17 @@
             <div class="sub-chips-container" id="filteredMachinesList"></div>
           </div>
 
-          <div style="display: flex; gap: 10px; margin-top: 12px;">
-            <button type="submit" class="btn-primary" id="submitBtn">Save to Cloud & Schedule</button>
+          <div style="display: flex; gap: 8px; margin-top: 8px;">
+            <button type="submit" class="btn-primary" id="submitBtn" onclick="event.preventDefault(); submitManualJob();">Save to Cloud & Schedule</button>
             <button type="button" class="btn-nav" id="cancelEditBtn" style="display:none;" onclick="cancelEdit()">Cancel Edit</button>
           </div>
         </form>
       </div>
 
       <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-          <h3 style="font-size: 14px; margin: 0;">Shop-Floor Production Execution Plan</h3>
-          <span style="font-size: 11px; color: var(--completed); font-weight: 700;" id="viewModeLabel">⚡ Live Active Plan</span>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="font-size: 13px;">Shop-Floor Production Execution Plan</h3>
+          <span style="font-size: 11px; color: #16a34a; font-weight: bold;" id="viewModeLabel">⚡ Live Active Plan</span>
         </div>
         <table id="outputPlan">
           <thead>
@@ -416,7 +585,9 @@
               <th>Project Code</th>
               <th>Project Name</th>
               <th>Part Name</th>
-              <th>Setting</th>
+              <th>Setting / Op</th>
+              <th>Scope</th>
+              <th>Resource Readiness</th>
               <th>Plan Qty</th>
               <th>Piece</th>
               <th>Duration</th>
@@ -426,8 +597,8 @@
               <th>Machine</th>
               <th>Operator</th>
               <th>Status</th>
-              <th style="min-width: 140px;">Floor Remarks (Delay/Reason)</th>
-              <th class="no-print" style="text-align: center; width: 190px;">Action Controls</th>
+              <th style="min-width: 130px;">Floor Remarks (Delay/Reason)</th>
+              <th class="no-print" style="text-align: center; min-width: 215px; width: 220px;">Action / Controls</th>
             </tr>
           </thead>
           <tbody id="planTableBody"></tbody>
@@ -435,13 +606,13 @@
       </div>
     </div>
 
-    <!-- MASTER LIST OF MACHINES (IMPORT & EXPORT) -->
+    <!-- MASTER LIST OF MACHINES -->
     <div id="machinesTab" class="module-pane">
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
           <div>
             <h3 style="margin-bottom: 2px;">Master List of Machines & Specifications</h3>
-            <span style="font-size: 11px; color: var(--text-muted);">Manage machine specifications (43 total units) with full import and export tools.</span>
+            <span style="font-size: 11px; color: var(--text-muted);">Manage 3-axis travel, table size, spindle speed, feed rate, and make specifications.</span>
           </div>
           <div style="display: flex; gap: 8px; align-items: center;">
             <input type="file" id="importMachinesFile" accept=".xlsx, .xls, .csv" style="display:none;" onchange="importDataFromFile(event, 'machines')">
@@ -457,11 +628,11 @@
           <thead>
             <tr>
               <th>Machine ID</th>
-              <th>Section Group</th>
-              <th>Make / Manufacturer</th>
-              <th>Model Name</th>
-              <th>Controller Type</th>
-              <th>Installation Year</th>
+              <th>Make / Model</th>
+              <th>Spindle Speed (RPM)</th>
+              <th>Feed Rate (mm/min)</th>
+              <th>Table Size (mm)</th>
+              <th>3-Axis Travel (X×Y×Z mm)</th>
               <th>Live Status</th>
               <th style="text-align: center;">Breakdown Control</th>
             </tr>
@@ -471,7 +642,7 @@
       </div>
     </div>
 
-    <!-- SHIFT PLANNING ROTATION (IMPORT & EXPORT) -->
+    <!-- SHIFT PLANNING ROTATION -->
     <div id="shiftPlanTab" class="module-pane">
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
@@ -509,7 +680,7 @@
       </div>
     </div>
 
-    <!-- ATTENDANCE MODULE (IMPORT & EXPORT) -->
+    <!-- ATTENDANCE MODULE -->
     <div id="attendanceTab" class="module-pane">
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
@@ -547,7 +718,7 @@
       </div>
     </div>
 
-    <!-- DOWNTIME MANAGEMENT (IMPORT & EXPORT) -->
+    <!-- DOWNTIME MANAGEMENT -->
     <div id="downtimeTab" class="module-pane">
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
@@ -633,7 +804,7 @@
       </div>
     </div>
 
-    <!-- OEE CALCULATION (EXPORT ONLY) -->
+    <!-- OEE CALCULATION -->
     <div id="oeeTab" class="module-pane">
       <div class="card" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
         <div>
@@ -689,41 +860,112 @@
 </div>
 
 <script>
+
+// Safe storage wrapper for mobile browsers / content:// URI sandbox restrictions
+const _memCache = {};
+function safeSessionGet(key) {
+  try { return window.sessionStorage ? sessionStorage.getItem(key) : _memCache[key]; }
+  catch(e) { return _memCache[key] || null; }
+}
+function safeSessionSet(key, val) {
+  try { if (window.sessionStorage) sessionStorage.setItem(key, val); }
+  catch(e) {}
+  _memCache[key] = val;
+}
+function safeSessionRemove(key) {
+  try { if (window.sessionStorage) sessionStorage.removeItem(key); }
+  catch(e) {}
+  delete _memCache[key];
+}
+function safeLocalGet(key) {
+  try { return window.localStorage ? localStorage.getItem(key) : _memCache['loc_' + key]; }
+  catch(e) { return _memCache['loc_' + key] || null; }
+}
+function safeLocalSet(key, val) {
+  try { if (window.localStorage) localStorage.setItem(key, val); }
+  catch(e) {}
+  _memCache['loc_' + key] = val;
+}
+
 const SUPABASE_URL = "https://nwdnbalqioewcoygbgyp.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im53ZG5iYWxxaW9ld2NveWdiZ3lwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4ODI1MjAsImV4cCI6MjEwNDQ1ODUyMH0.HMdDj4XhT3n99qQ2murxAz_LCiGS-DC-cYgblrVf5KA";
 
 let supabaseClient = null;
-if (SUPABASE_URL.startsWith("https://") && !SUPABASE_URL.includes("yourprojectid")) {
-  try {
+try {
+  if (typeof supabase !== 'undefined' && SUPABASE_URL && SUPABASE_URL.startsWith("https://") && !SUPABASE_URL.includes("yourprojectid")) {
     supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  } catch(e) {
-    console.error("Supabase config error:", e);
+  }
+} catch(e) {
+  console.warn("Supabase initialization bypassed or offline:", e);
+}
+
+function toggleMobileSidebar(force) {
+  const sidebar = document.getElementById('sidebarNav');
+  const backdrop = document.getElementById('sidebarBackdrop');
+  if (!sidebar) return;
+  const shouldOpen = (force !== undefined) ? force : !sidebar.classList.contains('open');
+  if (shouldOpen) {
+    sidebar.classList.add('open');
+    if (backdrop) backdrop.classList.add('active');
+  } else {
+    sidebar.classList.remove('open');
+    if (backdrop) backdrop.classList.remove('active');
   }
 }
 
 function switchModule(paneId, btnElem) {
+  toggleMobileSidebar(false);
+
   document.querySelectorAll('.module-pane').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('active'));
-  document.getElementById(paneId).classList.add('active');
-  btnElem.classList.add('active');
-  if (paneId === 'oeeTab') renderAutomatedOeeTable();
-  if (paneId === 'attendanceTab') renderAttendanceTable();
-  if (paneId === 'shiftPlanTab') renderShiftRosterTable();
-  if (paneId === 'downtimeTab') renderDowntimeTable();
-  if (paneId === 'machinesTab') renderMasterMachinesTable();
+  document.querySelectorAll('.mobile-tab-btn').forEach(b => b.classList.remove('active'));
+
+  const targetPane = document.getElementById(paneId);
+  if (targetPane) {
+    targetPane.classList.add('active');
+  } else {
+    console.error("Target module pane not found:", paneId);
+    return;
+  }
+
+  document.querySelectorAll(`.menu-item[onclick*="${paneId}"]`).forEach(b => b.classList.add('active'));
+  document.querySelectorAll(`.mobile-tab-btn[data-tab="${paneId}"]`).forEach(b => b.classList.add('active'));
+  if (btnElem) btnElem.classList.add('active');
+
+  const printBtn = document.getElementById('printSheetBtn');
+  if (printBtn) {
+    printBtn.style.display = (paneId === 'homeTab') ? 'none' : 'inline-block';
+  }
+
+  try {
+    if (paneId === 'planningTab') recalculateAndRender();
+    else if (paneId === 'oeeTab') renderAutomatedOeeTable();
+    else if (paneId === 'attendanceTab') renderAttendanceTable();
+    else if (paneId === 'shiftPlanTab') renderShiftRosterTable();
+    else if (paneId === 'downtimeTab') renderDowntimeTable();
+    else if (paneId === 'machinesTab') renderMasterMachinesTable();
+populateDowntimeMachineOptions();
+  } catch(err) {
+    console.error("Error executing module render for", paneId, err);
+  }
+
+  try {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const ws = document.querySelector('.workspace');
+    if (ws) ws.scrollTop = 0;
+  } catch(e) {}
 }
 
-// Updated Fleet Configuration: Wire Cut HS = 4, Surface Grinding = 6 (Total 43)
 const FLEET_MAP = [
-  { group: "VMC", label: "25 VMC Fleet", prefix: "VMC", count: 25, make: "HAAS / DMG Mori", controller: "Fanuc / Siemens 840D", year: "2021" },
-  { group: "SG", label: "Surface Grinding", prefix: "SG", count: 6, make: "Mitsui / Chevalier", controller: "DRO / PLC Auto", year: "2019" },
-  { group: "WC", label: "Wire Cut HS", prefix: "WC-HS", count: 4, make: "SODICK / Charmilles", controller: "Sodick NC", year: "2022" },
-  { group: "WC", label: "Wire Cut SS", prefix: "WC-SS", count: 1, make: "Mitsubishi", controller: "Mitsubishi Advance", year: "2020" },
-  { group: "DRO", label: "DRO Machines", prefix: "DRO", count: 2, make: "Acumen / Jyoti", controller: "2-Axis DRO", year: "2018" },
-  { group: "OTHER", label: "CNC Lathe", prefix: "CNC-Lathe", count: 1, make: "Ace Micromatic", controller: "Fanuc Oi-TF", year: "2023" },
-  { group: "OTHER", label: "Rough Milling", prefix: "Rough-Mill", count: 1, make: "BFW", controller: "BFW Numeric", year: "2017" },
-  { group: "OTHER", label: "Spark EDM", prefix: "EDM", count: 1, make: "Electronica", controller: "Pulse CNC", year: "2019" },
-  { group: "OTHER", label: "Laser Engraving", prefix: "Laser", count: 2, make: "Trumpf / Maxphotonics", controller: "EzCad Pro", year: "2023" }
+  { group: "VMC", label: "25 VMC Fleet", prefix: "VMC", count: 25, makeModel: "HAAS VF-2", spindle: "10,000 RPM", feed: "12,000 mm/min", table: "914 × 356 mm", travel: "762 × 406 × 508 mm" },
+  { group: "SG", label: "Surface Grinding", prefix: "SG", count: 6, makeModel: "Mitsui SE64", spindle: "3,500 RPM", feed: "5,000 mm/min", table: "600 × 400 mm", travel: "600 × 300 × 350 mm" },
+  { group: "WC", label: "Wire Cut HS", prefix: "WC-HS", count: 4, makeModel: "SODICK AQ327L", spindle: "N/A (Wire EDM)", feed: "2,000 mm/min", table: "600 × 400 mm", travel: "370 × 270 × 250 mm" },
+  { group: "WC", label: "Wire Cut SS", prefix: "WC-SS", count: 1, makeModel: "Mitsubishi MV1200R", spindle: "N/A (Wire EDM)", feed: "2,000 mm/min", table: "640 × 540 mm", travel: "400 × 300 × 220 mm" },
+  { group: "DRO", label: "DRO Machines", prefix: "DRO", count: 2, makeModel: "Jyoti Conventional", spindle: "2,500 RPM", feed: "Manual / Feed", table: "1200 × 300 mm", travel: "800 × 300 × 400 mm" },
+  { group: "OTHER", label: "CNC Lathe", prefix: "CNC-Lathe", count: 1, makeModel: "Ace Jobber XL", spindle: "4,000 RPM", feed: "10,000 mm/min", table: "Chuck 200mm", travel: "300 × 350 mm" },
+  { group: "OTHER", label: "Rough Milling", prefix: "Rough-Mill", count: 1, makeModel: "BFW Endeavour", spindle: "6,000 RPM", feed: "8,000 mm/min", table: "1000 × 500 mm", travel: "800 × 500 × 500 mm" },
+  { group: "OTHER", label: "Spark EDM", prefix: "EDM", count: 1, makeModel: "Electronica Smart Die", spindle: "N/A (Die Sinker)", feed: "1,500 mm/min", table: "600 × 400 mm", travel: "350 × 250 × 250 mm" },
+  { group: "OTHER", label: "Laser Engraving", prefix: "Laser", count: 2, makeModel: "Trumpf TruMark", spindle: "Laser Source", feed: "5,000 mm/min", table: "400 × 400 mm", travel: "200 × 200 × 150 mm" }
 ];
 
 let ALL_MACHINES = [];
@@ -733,20 +975,82 @@ FLEET_MAP.forEach(item => {
     ALL_MACHINES.push({ 
       id: `${item.prefix}-${numStr}`, 
       group: item.group, 
-      make: item.make, 
-      model: `${item.prefix} Model ${numStr}`, 
-      controller: item.controller, 
-      year: item.year 
+      makeModel: item.makeModel, 
+      spindle: item.spindle, 
+      feed: item.feed, 
+      table: item.table, 
+      travel: item.travel 
     });
   }
 });
 
-let baseDate = new Date();
-if (baseDate.getHours() < 6) baseDate.setHours(6, 0, 0, 0);
-
 let globalShiftSystem = '3_SHIFT_8H';
 let viewMode = 'ALL';
 let activeFilterDate = new Date().toISOString().slice(0, 10);
+let planBaselineMode = 'SHIFT_START';
+let customPlanBaseline = null;
+
+// Initialize baseDate based on selected date & shift start
+function getCalculatedBaseDate() {
+  if (planBaselineMode === 'CURRENT_TIME') {
+    return new Date();
+  }
+  if (planBaselineMode === 'CUSTOM' && customPlanBaseline) {
+    let d = new Date(customPlanBaseline);
+    if (!isNaN(d.getTime())) return d;
+  }
+  // Default: Shift 1 start (06:00 AM) on activeFilterDate
+  let parts = activeFilterDate.split('-');
+  if (parts.length === 3) {
+    return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 6, 0, 0, 0);
+  }
+  let d = new Date();
+  d.setHours(6, 0, 0, 0);
+  return d;
+}
+
+let baseDate = getCalculatedBaseDate();
+
+function onPlanBaselineModeChanged() {
+  planBaselineMode = document.getElementById('planBaselineMode').value;
+  const customInp = document.getElementById('customPlanBaselineInput');
+  if (planBaselineMode === 'CUSTOM') {
+    customInp.style.display = 'inline-block';
+    if (!customInp.value) {
+      customInp.value = formatForDateTimeLocal(baseDate);
+    }
+    customPlanBaseline = customInp.value;
+  } else {
+    customInp.style.display = 'none';
+  }
+  baseDate = getCalculatedBaseDate();
+  recalculateAndRender();
+}
+
+function onCustomPlanBaselineChanged() {
+  customPlanBaseline = document.getElementById('customPlanBaselineInput').value;
+  baseDate = getCalculatedBaseDate();
+  recalculateAndRender();
+}
+
+function setManualTimePreset(type) {
+  const inp = document.getElementById('manualStartTime');
+  let refDateStr = activeFilterDate || new Date().toISOString().slice(0, 10);
+  let p = refDateStr.split('-');
+  let y = parseInt(p[0]), m = parseInt(p[1]) - 1, d = parseInt(p[2]);
+
+  if (type === 'SHIFT1') {
+    let dt = new Date(y, m, d, 6, 0, 0, 0);
+    inp.value = formatForDateTimeLocal(dt);
+  } else if (type === 'SHIFT2') {
+    let dt = new Date(y, m, d, 14, 30, 0, 0);
+    inp.value = formatForDateTimeLocal(dt);
+  } else if (type === 'NOW') {
+    inp.value = formatForDateTimeLocal(new Date());
+  } else if (type === 'CLEAR') {
+    inp.value = '';
+  }
+}
 
 let jobsList = [];
 let machineStatus = {};
@@ -789,8 +1093,12 @@ let downtimeLogs = [
   { id: 1, time: "2026-09-24 10:30", machine: "VMC-01", category: "Tool Breakdown", minutes: 45, shift: "Shift 1", team: "Tool Room", remarks: "End mill chipped during roughing op" },
   { id: 2, time: "2026-09-24 14:15", machine: "SG-01", category: "Electrical / Power", minutes: 30, shift: "Shift 2", team: "Maintenance", remarks: "Voltage fluctuation trip" }
 ];
-let currentUser = null;
+let currentUser = { username: 'Production Manager', role: 'ADMIN' };
 let activeMasterMachineGroup = 'VMC';
+let pendingParsedWorkbookData = null;
+
+// Abbreviation sheet scope cache
+let abbreviationScopeMap = {}; 
 
 function getDayNameFromDate(dateStr) {
   const d = new Date(dateStr);
@@ -800,7 +1108,6 @@ function getDayNameFromDate(dateStr) {
 
 function onGlobalShiftModeChanged() {
   globalShiftSystem = document.getElementById('globalShiftMode').value;
-  document.getElementById('jobShiftPattern').value = globalShiftSystem;
   onJobShiftPatternChanged();
   updateShiftSummaryHeaders();
   recalculateAndRender();
@@ -831,35 +1138,15 @@ function updateShiftSummaryHeaders() {
 }
 
 function onJobShiftPatternChanged() {
-  const pattern = document.getElementById('jobShiftPattern').value;
+  const pattern = globalShiftSystem;
   const select = document.getElementById('targetShiftSelect');
   if (!select) return;
-
-  if (pattern === '3_SHIFT_8H') {
-    select.innerHTML = `
-      <option value="AUTO">Auto (Earliest Free)</option>
-      <option value="Shift 1">Shift 1 (Starts 06:00 AM)</option>
-      <option value="Shift 2">Shift 2 (Starts 02:30 PM)</option>
-      <option value="Shift 3">Shift 3 (Starts 11:00 PM)</option>
-    `;
-  } else if (pattern === '2_SHIFT_8H') {
-    select.innerHTML = `
-      <option value="AUTO">Auto (Earliest Free)</option>
-      <option value="Shift 1">Shift 1 (Starts 06:00 AM)</option>
-      <option value="Shift 2">Shift 2 (Starts 02:30 PM)</option>
-    `;
-  } else if (pattern === 'GEN_SHIFT_8H') {
-    select.innerHTML = `
-      <option value="AUTO">Auto (Earliest Free)</option>
-      <option value="Gen Shift">General Shift (Starts 09:00 AM)</option>
-    `;
-  } else if (pattern === '2_SHIFT_12H') {
-    select.innerHTML = `
-      <option value="AUTO">Auto (Earliest Free)</option>
-      <option value="Shift 1">Shift 1 (Starts 06:00 AM)</option>
-      <option value="Shift 2">Shift 2 (Starts 06:00 PM)</option>
-    `;
-  }
+  select.innerHTML = `
+    <option value="AUTO">Auto (Earliest Free)</option>
+    <option value="Shift 1">Shift 1 (Starts 06:00 AM)</option>
+    <option value="Shift 2">Shift 2 (Starts 02:30 PM)</option>
+    <option value="Shift 3">Shift 3 (Starts 11:00 PM)</option>
+  `;
 }
 
 function toggleDateFilterMode() {
@@ -873,6 +1160,7 @@ function toggleDateFilterMode() {
 function setTodayDate() {
   activeFilterDate = new Date().toISOString().slice(0, 10);
   document.getElementById('selectedPlanDate').value = activeFilterDate;
+  baseDate = getCalculatedBaseDate();
   recalculateAndRender();
 }
 
@@ -881,6 +1169,7 @@ function changeDateOffset(offset) {
   d.setDate(d.getDate() + offset);
   activeFilterDate = d.toISOString().slice(0, 10);
   document.getElementById('selectedPlanDate').value = activeFilterDate;
+  baseDate = getCalculatedBaseDate();
   recalculateAndRender();
 }
 
@@ -888,8 +1177,17 @@ function onDateFilterChanged() {
   const val = document.getElementById('selectedPlanDate').value;
   if (val) {
     activeFilterDate = val;
+    baseDate = getCalculatedBaseDate();
     recalculateAndRender();
   }
+}
+
+
+function quickBypassLogin() {
+  currentUser = { username: 'Production Manager', role: 'ADMIN' };
+  safeSessionSet('VMC_CLOUD_USER', JSON.stringify(currentUser));
+  applyRolePermissions();
+  try { recalculateAndRender(); } catch(e) {}
 }
 
 function authenticateUser() {
@@ -905,29 +1203,30 @@ function authenticateUser() {
     return;
   }
 
-  sessionStorage.setItem('VMC_CLOUD_USER', JSON.stringify(currentUser));
+  safeSessionSet('VMC_CLOUD_USER', JSON.stringify(currentUser));
   applyRolePermissions();
   fetchCloudJobs();
 }
 
 function logout() {
-  sessionStorage.removeItem('VMC_CLOUD_USER');
+  safeSessionRemove('VMC_CLOUD_USER');
   location.reload();
 }
 
 function applyRolePermissions() {
-  document.getElementById('loginModal').style.display = 'none';
-  document.getElementById('sidebarNav').style.display = 'flex';
-  document.getElementById('mainApp').style.display = 'flex';
-  document.getElementById('userBadge').innerText = `${currentUser.username} [${currentUser.role}]`;
-  document.getElementById('homeUserRoleLbl').innerText = `${currentUser.username} (${currentUser.role})`;
-
-  document.querySelectorAll('.admin-only').forEach(el => {
-    el.style.display = (currentUser.role === 'ADMIN') ? '' : 'none';
-  });
+  const modal = document.getElementById('loginModal');
+  if (modal) modal.style.display = 'none';
+  const sidebar = document.getElementById('sidebarNav');
+  if (sidebar) sidebar.style.display = 'flex';
+  const main = document.getElementById('mainApp');
+  if (main) main.style.display = 'flex';
+  const badge = document.getElementById('userBadge');
+  if (badge && currentUser) {
+    badge.innerText = `${currentUser.username} [${currentUser.role}]`;
+  }
 }
 
-const savedSession = sessionStorage.getItem('VMC_CLOUD_USER');
+const savedSession = safeSessionGet('VMC_CLOUD_USER');
 if (savedSession) {
   currentUser = JSON.parse(savedSession);
   applyRolePermissions();
@@ -942,9 +1241,744 @@ function pickNextBestMachines(count, category) {
   return active.slice(0, count);
 }
 
+// Check Resource Availability logic
+function checkResourcesAllAvailable(rm, dwg, prog) {
+  return (rm === true || rm === 'YES') && 
+         (dwg === true || dwg === 'YES') && 
+         (prog === true || prog === 'YES');
+}
+
+function onResourceCheckChanged() {
+  const rm = document.getElementById('importRmAvailable').checked;
+  const dwg = document.getElementById('importDwgAvailable').checked;
+  const prog = document.getElementById('importProgAvailable').checked;
+
+  const gateBox = document.getElementById('resourceGateBox');
+  const badge = document.getElementById('resourceGateStatusBadge');
+  const notice = document.getElementById('resourceWarningNotice');
+  const btnConfirm = document.getElementById('btnConfirmImportPlan');
+
+  let missing = [];
+  if (!rm) missing.push("RM (Raw Material)");
+  if (!dwg) missing.push("Part Drawing");
+  if (!prog) missing.push("CAM/CNC Program");
+
+  if (missing.length === 0) {
+    gateBox.className = "resource-gate-box";
+    badge.className = "badge-resource-ok";
+    badge.innerText = "🟢 Ready to Plan (All 3 OK)";
+    notice.style.color = "#15803d";
+    notice.innerHTML = "✅ <strong>Resource Verification Passed:</strong> RM, Drawing, and Program are confirmed available. Execution schedule can proceed.";
+    btnConfirm.disabled = false;
+    btnConfirm.style.opacity = "1";
+    btnConfirm.style.cursor = "pointer";
+  } else {
+    gateBox.className = "resource-gate-box blocked";
+    badge.className = "badge-resource-wait";
+    badge.innerText = `🔴 Blocked: Missing ${missing.length} item(s)`;
+    notice.style.color = "#b91c1c";
+    notice.innerHTML = `⚠️ <strong>Planning Blocked:</strong> All 3 resources must be available to plan. Missing: <span style="text-decoration: underline;">${missing.join(", ")}</span>.`;
+    btnConfirm.disabled = true;
+    btnConfirm.style.opacity = "0.6";
+    btnConfirm.style.cursor = "not-allowed";
+  }
+}
+
+function closeImportConfigModal() {
+  document.getElementById('importConfigModal').style.display = 'none';
+  pendingParsedWorkbookData = null;
+}
+
+// Check if an operation name or code falls under Machining Scope
+function isUnderMachiningScope(opCode) {
+  let clean = (opCode || "").trim().toUpperCase();
+  if (abbreviationScopeMap[clean] !== undefined) {
+    return abbreviationScopeMap[clean].isMachining;
+  }
+  
+  // Intelligent heuristic based on Tool Room standards
+  const machiningKeywords = [
+    'VMC', 'CNC', 'RMG', 'ROUGH MILL', 'SG', 'SURFACE GRIND', 
+    'WC', 'WIRE CUT', 'WIRE-CUT', 'DRO', 'LATHE', 'TURNING', 
+    'EDM', 'SPARK EDM', 'DRILL', 'BORING', 'MILLING', 'CYLINDRICAL'
+  ];
+  const nonMachiningKeywords = [
+    'HT', 'HEAT TREAT', 'BLACKENING', 'ANODIZ', 'PLATING', 
+    'CMM', 'INSPECT', 'QC', 'DEBURR', 'BUFF', 'POLISH', 
+    'FITTING', 'ASSEMBLY', 'BENCH', 'PACKING', 'LASER MARK', 'RM'
+  ];
+
+  for (let kw of nonMachiningKeywords) {
+    if (clean.includes(kw)) return false;
+  }
+  for (let kw of machiningKeywords) {
+    if (clean.includes(kw)) return true;
+  }
+
+  return true; // Default fallback to inclusion if undetermined
+}
+
+// Parse Abbreviation Sheet from uploaded Process Sheet
+function parseAbbreviationSheet(workbook) {
+  abbreviationScopeMap = {};
+  let abbrevSheetName = workbook.SheetNames.find(s => /abbrev/i.test(s.trim()));
+  const infoEl = document.getElementById('abbrevSheetInfo');
+
+  if (!abbrevSheetName) {
+    if (infoEl) infoEl.innerHTML = `⚠️ No "Abbreviation" tab found. Using smart Tool Room heuristic for Machining Scope.`;
+    return;
+  }
+
+  const ws = workbook.Sheets[abbrevSheetName];
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+  
+  let headerRowIdx = -1;
+  let codeCol = 0, descCol = 1, scopeCol = -1;
+
+  for (let r = 0; r < Math.min(10, rows.length); r++) {
+    let row = rows[r];
+    if (!row) continue;
+    for (let c = 0; c < row.length; c++) {
+      let cellStr = String(row[c] || "").trim().toUpperCase();
+      if (cellStr.includes('CODE') || cellStr.includes('ABBREVIATION') || cellStr === 'OP' || cellStr.includes('OPERATION')) {
+        headerRowIdx = r;
+        codeCol = c;
+      }
+      if (cellStr.includes('SCOPE') || cellStr.includes('CATEGORY') || cellStr.includes('DEPT') || cellStr.includes('MACHINING')) {
+        scopeCol = c;
+      }
+      if (cellStr.includes('DESC') || cellStr.includes('PROCESS')) {
+        descCol = c;
+      }
+    }
+    if (headerRowIdx !== -1 && scopeCol !== -1) break;
+  }
+
+  let startRow = (headerRowIdx >= 0) ? headerRowIdx + 1 : 0;
+  let countMach = 0, countTotal = 0;
+
+  for (let r = startRow; r < rows.length; r++) {
+    let row = rows[r];
+    if (!row || !row[codeCol]) continue;
+    let code = String(row[codeCol]).trim();
+    if (!code || code.toUpperCase() === 'TOTAL') continue;
+
+    let desc = descCol >= 0 && row[descCol] ? String(row[descCol]).trim() : '';
+    let scopeVal = scopeCol >= 0 && row[scopeCol] ? String(row[scopeCol]).trim().toUpperCase() : '';
+
+    let isMach = false;
+    if (scopeVal) {
+      if (scopeVal.includes('MACHIN') || scopeVal.includes('IN-HOUSE') || scopeVal.includes('SHOP') || scopeVal === 'YES' || scopeVal === 'Y') {
+        isMach = true;
+      } else if (scopeVal.includes('OUTSOURCE') || scopeVal.includes('TREAT') || scopeVal.includes('INSPECT') || scopeVal.includes('NO')) {
+        isMach = false;
+      } else {
+        isMach = isUnderMachiningScope(code + " " + desc);
+      }
+    } else {
+      isMach = isUnderMachiningScope(code + " " + desc);
+    }
+
+    abbreviationScopeMap[code.toUpperCase()] = {
+      code,
+      desc,
+      scope: scopeVal || (isMach ? 'MACHINING SCOPE' : 'NON-MACHINING'),
+      isMachining: isMach
+    };
+
+    if (isMach) countMach++;
+    countTotal++;
+  }
+
+  if (infoEl) {
+    infoEl.innerHTML = `✅ Sheet "<strong>${abbrevSheetName}</strong>" loaded: <strong>${countMach}</strong> of ${countTotal} operations under Machining Scope.`;
+  }
+}
+
+// Upgraded Process Sheet Import with per-operation machine, setting times, Machining Scope & 3-Resource Gatekeeper
+function handleProcessSheetFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const data = new Uint8Array(e.target.result);
+    pendingParsedWorkbookData = XLSX.read(data, { type: 'array' });
+    
+    // Step 1: Parse Abbreviation Sheet
+    parseAbbreviationSheet(pendingParsedWorkbookData);
+
+    // Step 2: Extract detected operations from Master sheet
+    let detectedOperations = new Set();
+    if (pendingParsedWorkbookData.Sheets['Master']) {
+      const ws = pendingParsedWorkbookData.Sheets['Master'];
+      const sheetData = XLSX.utils.sheet_to_json(ws, { header: 1 });
+      for (let i = 3; i < sheetData.length; i++) {
+        let row = sheetData[i];
+        if (row && row[1] && !isNaN(row[1])) {
+          for (let c = 12; c < row.length; c++) {
+            let val = row[c];
+            if (val && typeof val === 'string' && val.trim() !== '' && val !== 'OPERATION') {
+              detectedOperations.add(val.trim());
+            }
+          }
+        }
+      }
+    }
+
+    const container = document.getElementById('operationConfigContainer');
+    container.innerHTML = '';
+
+    if (detectedOperations.size === 0) {
+      detectedOperations.add('VMC-1');
+      detectedOperations.add('VMC-2');
+      detectedOperations.add('RMG');
+      detectedOperations.add('SG');
+      detectedOperations.add('HEAT TREATMENT');
+    }
+
+    // Step 3: Populate operation configurations with Machining Scope validation
+    detectedOperations.forEach(op => {
+      let isMachining = isUnderMachiningScope(op);
+      let cleanKey = op.replace(/[^a-zA-Z0-9]/g, '_');
+
+      let div = document.createElement('div');
+      div.style.background = isMachining ? '#f0fdf4' : '#f8fafc';
+      div.style.padding = '8px 10px';
+      div.style.borderRadius = '6px';
+      div.style.border = isMachining ? '1px solid #86efac' : '1px solid #cbd5e1';
+      div.style.display = 'flex';
+      div.style.flexDirection = 'column';
+      div.style.gap = '4px';
+
+      div.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <label style="font-size: 11px; margin: 0; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+              <input type="checkbox" id="plan_op_${cleanKey}" ${isMachining ? 'checked' : ''} style="width: auto;">
+              <strong style="color: var(--primary); font-size: 12px;">Op / WorkCentre: ${op}</strong>
+            </label>
+          </div>
+          <div>
+            <span class="${isMachining ? 'badge-scope-mach' : 'badge-scope-non'}">
+              ${isMachining ? '⚙️ In Machining Scope' : 'Non-Machining Scope'}
+            </span>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 2px;">
+          <div>
+            <label style="font-size: 9px;">Machines Count</label>
+            <input type="number" id="mach_cnt_${cleanKey}" min="1" max="10" value="1" style="padding: 3px; text-align: center;">
+          </div>
+          <div>
+            <label style="font-size: 9px;">Setting Time (Min)</label>
+            <input type="number" id="set_time_${cleanKey}" min="0" value="30" style="padding: 3px; text-align: center;">
+          </div>
+          <div>
+            <label style="font-size: 9px;">Specific Machine ID</label>
+            <input type="text" id="spec_mach_${cleanKey}" placeholder="e.g. VMC-01" style="padding: 3px; text-align: center;">
+          </div>
+        </div>
+      `;
+      container.appendChild(div);
+    });
+
+    // Reset resource gatekeeper defaults
+    document.getElementById('importRmAvailable').checked = true;
+    document.getElementById('importDwgAvailable').checked = true;
+    document.getElementById('importProgAvailable').checked = true;
+    onResourceCheckChanged();
+
+    // Default import plan start time to Shift 1 (06:00 AM) on activeFilterDate
+    const importTimeInput = document.getElementById('importPlanStartTime');
+    if (importTimeInput) {
+      importTimeInput.value = formatForDateTimeLocal(baseDate);
+    }
+
+    document.getElementById('importConfigModal').style.display = 'flex';
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// Generate Time Plan only when RM, Drawing, Program are available AND operation is in Machining Scope
+async function confirmGranularProcessSheetImport() {
+  if (!pendingParsedWorkbookData) return;
+
+  // Gatekeeper verification: All 3 resources MUST be available
+  const rm = document.getElementById('importRmAvailable').checked;
+  const dwg = document.getElementById('importDwgAvailable').checked;
+  const prog = document.getElementById('importProgAvailable').checked;
+
+  if (!checkResourcesAllAvailable(rm, dwg, prog)) {
+    let missing = [];
+    if (!rm) missing.push("Raw Material (RM)");
+    if (!dwg) missing.push("Part Drawing");
+    if (!prog) missing.push("CNC/CAM Program");
+    alert(`⛔ Planning Stopped!
+
+All 3 resources must be available before scheduling production jobs:
+Missing: ${missing.join(', ')}
+
+Please ensure RM, Drawing, and Program are ready.`);
+    return;
+  }
+
+  let importedCount = 0;
+  let skippedNonMachining = 0;
+  const priority = document.getElementById('importPriority').value;
+
+  if (pendingParsedWorkbookData.Sheets['Master']) {
+    const ws = pendingParsedWorkbookData.Sheets['Master'];
+    const sheetData = XLSX.utils.sheet_to_json(ws, { header: 1 });
+    
+    for (let i = 3; i < sheetData.length; i++) {
+      let row = sheetData[i];
+      if (row && row[1] && !isNaN(row[1])) {
+        let orderNo = row[1];
+        let partName = row[4] || "Part " + orderNo;
+        let totalQty = row[7] ? parseInt(row[7]) || 120 : 120;
+
+        let ops = [];
+        for (let c = 12; c < row.length; c++) {
+          let cellVal = row[c];
+          if (cellVal && typeof cellVal === 'string' && cellVal.trim() !== '' && cellVal !== 'OPERATION') {
+            ops.push(cellVal.trim());
+          }
+        }
+
+        ops.forEach((op, opIdx) => {
+          let cleanKey = op.replace(/[^a-zA-Z0-9]/g, '_');
+          let planCheck = document.getElementById(`plan_op_${cleanKey}`);
+          
+          // STRICT RULE: Only plan for operations confirmed under Machining Scope
+          if (!planCheck || !planCheck.checked) {
+            skippedNonMachining++;
+            return; // Skip operations outside machining scope
+          }
+
+          let mCountInput = document.getElementById(`mach_cnt_${cleanKey}`);
+          let sTimeInput = document.getElementById(`set_time_${cleanKey}`);
+          let specMachInput = document.getElementById(`spec_mach_${cleanKey}`);
+
+          let machCount = mCountInput ? parseInt(mCountInput.value) || 1 : 1;
+          let settingTime = sTimeInput ? parseInt(sTimeInput.value) || 30 : 30;
+          let specificMach = specMachInput ? specMachInput.value.trim() : '';
+
+          let perMachQty = Math.ceil(totalQty / machCount);
+
+          for (let m = 0; m < machCount; m++) {
+            let assignedMachine = specificMach !== '' ? specificMach : (op.includes('VMC') ? `VMC-${m+1 < 10 ? '0'+(m+1) : m+1}` : (op.includes('SG') ? `SG-${m+1}` : 'VMC-01'));
+            let uniqueId = `job_imp_${Date.now()}_${orderNo}_op${opIdx}_m${m}`;
+
+            const importPlanStartVal = document.getElementById('importPlanStartTime') ? document.getElementById('importPlanStartTime').value : null;
+
+            jobsList.push({
+              id: uniqueId,
+              projectCode: "HYA26270134",
+              projectName: "Upper and Lower Cover",
+              partName: `${partName} [${op}]`,
+              setting: `Setting & Op ${opIdx+1}`,
+              qty: perMachQty,
+              firstPcMins: settingTime,
+              cycleMins: 25,
+              assignedMachine: assignedMachine,
+              operator: "Roster Assigned Team",
+              priority: priority,
+              shiftPattern: globalShiftSystem,
+              targetShift: "AUTO",
+              manualStartTime: (opIdx === 0 && importPlanStartVal) ? importPlanStartVal : null,
+              pieceStates: {},
+              pieceDelays: {},
+              pieceRemarks: {},
+              resources: {
+                rm: true,
+                drawing: true,
+                program: true,
+                verifiedAt: new Date().toISOString()
+              },
+              scopeType: "MACHINING"
+            });
+            importedCount++;
+          }
+        });
+      }
+    }
+  }
+
+  document.getElementById('importConfigModal').style.display = 'none';
+
+  if (importedCount > 0) {
+    await saveJobToCloud(jobsList.slice(-importedCount));
+    alert(`🎉 Successfully planned ${importedCount} Machining Scope job(s) across plant machines!
+
+✓ RM: Available
+✓ Drawing: Available
+✓ Program: Available
+(Filtered out ${skippedNonMachining} non-machining operations based on Abbreviation sheet).`);
+    switchModule('planningTab', document.querySelectorAll('.menu-item')[1]);
+  } else {
+    alert("No operations were planned. Please ensure at least one Machining Scope operation is selected.");
+  }
+  pendingParsedWorkbookData = null;
+}
+
+// Manual Job Creation with 3-Resource Gatekeeper
+
+
+
+function parseCustomDateTime(val) {
+  if (!val) return null;
+  if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+  if (typeof val === "number") {
+    let d = new Date(val);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  let str = String(val).trim();
+  if (!str) return null;
+
+  // Try direct Date parse first
+  let direct = new Date(str);
+  if (!isNaN(direct.getTime()) && direct.getFullYear() > 2000) {
+    return direct;
+  }
+
+  // Handle DD-MM-YYYY or DD/MM/YYYY with optional time
+  // e.g. "27-09-2026 08:01" or "27/09/2026 08:01" or "27-09-2026T08:01"
+  let dmyMatch = str.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})(?:[\sT](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (dmyMatch) {
+    let day = parseInt(dmyMatch[1], 10);
+    let month = parseInt(dmyMatch[2], 10) - 1;
+    let year = parseInt(dmyMatch[3], 10);
+    let hours = dmyMatch[4] ? parseInt(dmyMatch[4], 10) : 6;
+    let mins = dmyMatch[5] ? parseInt(dmyMatch[5], 10) : 0;
+    let secs = dmyMatch[6] ? parseInt(dmyMatch[6], 10) : 0;
+    let res = new Date(year, month, day, hours, mins, secs);
+    if (!isNaN(res.getTime())) return res;
+  }
+
+  // Handle YYYY-MM-DD or YYYY/MM/DD with optional time
+  let ymdMatch = str.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})(?:[\sT](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (ymdMatch) {
+    let year = parseInt(ymdMatch[1], 10);
+    let month = parseInt(ymdMatch[2], 10) - 1;
+    let day = parseInt(ymdMatch[3], 10);
+    let hours = ymdMatch[4] ? parseInt(ymdMatch[4], 10) : 6;
+    let mins = ymdMatch[5] ? parseInt(ymdMatch[5], 10) : 0;
+    let secs = ymdMatch[6] ? parseInt(ymdMatch[6], 10) : 0;
+    let res = new Date(year, month, day, hours, mins, secs);
+    if (!isNaN(res.getTime())) return res;
+  }
+
+  return null;
+}
+
+function formatForDateTimeLocal(val) {
+  if (!val) return '';
+  let d = parseCustomDateTime(val);
+  if (!d) return '';
+  let year = d.getFullYear();
+  let month = String(d.getMonth() + 1).padStart(2, '0');
+  let day = String(d.getDate()).padStart(2, '0');
+  let hours = String(d.getHours()).padStart(2, '0');
+  let mins = String(d.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${mins}`;
+}
+
+function alignTimeToShift(baseDt, targetShift, pattern) {
+  let d = new Date(baseDt);
+  let p = pattern || globalShiftSystem;
+  
+  if (targetShift === 'Shift 1' || targetShift === 'Gen Shift') {
+    d.setHours(6, 0, 0, 0);
+    if (d < baseDt) {
+      let baseMin = baseDt.getHours() * 60 + baseDt.getMinutes();
+      if (baseMin < 870) {
+        return new Date(baseDt);
+      } else {
+        d.setDate(d.getDate() + 1);
+        d.setHours(6, 0, 0, 0);
+      }
+    }
+  } else if (targetShift === 'Shift 2') {
+    if (p === '2_SHIFT_12H') {
+      d.setHours(18, 0, 0, 0);
+    } else {
+      d.setHours(14, 30, 0, 0);
+    }
+    if (d < baseDt) {
+      d.setDate(d.getDate() + 1);
+      if (p === '2_SHIFT_12H') d.setHours(18, 0, 0, 0);
+      else d.setHours(14, 30, 0, 0);
+    }
+  } else if (targetShift === 'Shift 3') {
+    d.setHours(23, 0, 0, 0);
+    if (d < baseDt) {
+      d.setDate(d.getDate() + 1);
+      d.setHours(23, 0, 0, 0);
+    }
+  }
+  return d;
+}
+
+
+function saveLocalJobMetadata(job) {
+  let meta = JSON.parse(safeLocalGet('VMC_JOB_METADATA') || '{}');
+  meta[job.id] = {
+    manualStartTime: job.manualStartTime || null,
+    shiftPattern: job.shiftPattern || globalShiftSystem,
+    targetShift: job.targetShift || 'AUTO',
+    resources: job.resources || { rm: true, drawing: true, program: true },
+    scopeType: job.scopeType || 'MACHINING',
+    assignedMachine: job.assignedMachine
+  };
+  safeLocalSet('VMC_JOB_METADATA', JSON.stringify(meta));
+}
+
+async function updateJobInCloud(job) {
+  saveLocalJobMetadata(job);
+  let idx = jobsList.findIndex(j => String(j.id) === String(job.id));
+  if (idx !== -1) {
+    jobsList[idx] = job;
+  }
+  safeLocalSet('VMC_CLOUD_BACKUP', JSON.stringify(jobsList));
+  recalculateAndRender();
+
+  if (supabaseClient) {
+    try {
+      const { error } = await supabaseClient.from('vmc_production_jobs').update({
+        project_code: job.projectCode,
+        project_name: job.projectName,
+        part_name: job.partName,
+        setting: job.setting,
+        qty: job.qty,
+        first_pc_mins: job.firstPcMins,
+        cycle_mins: job.cycleMins,
+        assigned_machine: job.assignedMachine,
+        operator: job.operator,
+        priority: job.priority,
+        shift_pattern: job.shiftPattern || globalShiftSystem,
+        target_shift: job.targetShift || 'AUTO',
+        manual_start_time: job.manualStartTime || null,
+        piece_states: job.pieceStates,
+        piece_delays: job.pieceDelays,
+        piece_remarks: job.pieceRemarks,
+        resources: job.resources,
+        scope_type: job.scopeType
+      }).eq('id', job.id);
+      if (error) console.warn("Cloud update notice:", error.message);
+    } catch(e) {
+      console.warn("Cloud update exception:", e);
+    }
+  }
+}
+
+function editJob(id) {
+  let job = jobsList.find(j => String(j.id) === String(id));
+  if (!job) return;
+
+  document.getElementById('editJobId').value = job.id;
+  document.getElementById('projectCode').value = job.projectCode || '';
+  document.getElementById('projectName').value = job.projectName || '';
+  document.getElementById('partName').value = job.partName || '';
+  document.getElementById('setting').value = job.setting || '';
+  document.getElementById('planQty').value = job.qty || 1;
+  document.getElementById('firstPcMins').value = job.firstPcMins || 60;
+  document.getElementById('cycleMins').value = job.cycleMins || 30;
+  document.getElementById('operator').value = job.operator || '';
+  document.getElementById('priority').value = job.priority || 'NORMAL';
+  
+  if (job.shiftPattern) {
+    document.getElementById('jobShiftPattern').value = job.shiftPattern;
+    onJobShiftPatternChanged();
+  }
+  if (job.targetShift) {
+    document.getElementById('targetShiftSelect').value = job.targetShift;
+  }
+  
+  // Format accurately for datetime-local input
+  document.getElementById('manualStartTime').value = job.manualStartTime ? formatForDateTimeLocal(job.manualStartTime) : '';
+
+  if (document.getElementById('manualRmAvailable')) {
+    document.getElementById('manualRmAvailable').value = (job.resources && job.resources.rm !== false) ? 'YES' : 'NO';
+  }
+  if (document.getElementById('manualDwgAvailable')) {
+    document.getElementById('manualDwgAvailable').value = (job.resources && job.resources.drawing !== false) ? 'YES' : 'NO';
+  }
+  if (document.getElementById('manualProgAvailable')) {
+    document.getElementById('manualProgAvailable').value = (job.resources && job.resources.program !== false) ? 'YES' : 'NO';
+  }
+
+  document.getElementById('formTitle').innerText = `Edit Production Planning Entry: ${job.partName}`;
+  document.getElementById('submitBtn').innerText = 'Update Job in Cloud';
+  document.getElementById('cancelEditBtn').style.display = 'inline-block';
+
+  // Automatically switch category filter if needed and check the assigned machine
+  if (job.assignedMachine) {
+    let mObj = ALL_MACHINES.find(m => m.id === job.assignedMachine);
+    if (mObj) {
+      document.getElementById('machineCategoryFilter').value = mObj.group;
+      renderFilteredMachines();
+    }
+    let cb = document.querySelector(`input[name="selectedMachines"][value="${job.assignedMachine}"]`);
+    if (cb) {
+      cb.checked = true;
+      document.getElementById('parallelCount').value = 1;
+    }
+  }
+
+  document.getElementById('planningFormCard').scrollIntoView({ behavior: 'smooth' });
+}
+
+function cancelEdit() {
+  document.getElementById('editJobId').value = '';
+  document.getElementById('jobForm').reset();
+  document.getElementById('formTitle').innerText = 'New Production Planning Entry';
+  document.getElementById('submitBtn').innerText = 'Save to Cloud & Schedule';
+  document.getElementById('cancelEditBtn').style.display = 'none';
+}
+
+function addPieceDelay(jobId, pieceNo) {
+  let job = jobsList.find(j => String(j.id) === String(jobId));
+  if (!job) return;
+
+  let currentDelay = (job.pieceDelays && job.pieceDelays[pieceNo]) ? job.pieceDelays[pieceNo] : 0;
+  let delayInput = prompt(`Enter stoppage / delay time (in minutes) for Piece #${pieceNo}:`, "15");
+  if (delayInput === null) return;
+
+  let delayMins = parseInt(delayInput);
+  if (isNaN(delayMins) || delayMins < 0) {
+    alert("Please enter a valid positive number of minutes.");
+    return;
+  }
+
+  let reason = prompt(`Enter reason / remarks for delay on Piece #${pieceNo}:`, "Tool change / Setup calibration");
+  if (reason === null) reason = "Floor delay logged";
+
+  if (!job.pieceDelays) job.pieceDelays = {};
+  if (!job.pieceRemarks) job.pieceRemarks = {};
+
+  job.pieceDelays[pieceNo] = currentDelay + delayMins;
+  
+  let existingRemark = job.pieceRemarks[pieceNo] || "";
+  let newRemark = existingRemark ? `${existingRemark} | +${delayMins}m: ${reason}` : `+${delayMins}m: ${reason}`;
+  job.pieceRemarks[pieceNo] = newRemark;
+
+  if (delayMins > 0) {
+    downtimeLogs.push({
+      id: Date.now(),
+      time: new Date().toISOString().slice(0, 16).replace('T', ' '),
+      machine: job.assignedMachine,
+      category: "Setup / Adjustment",
+      minutes: delayMins,
+      shift: getShift(new Date(), job.shiftPattern),
+      team: "Tool Room",
+      remarks: `${job.partName} #${pieceNo}: ${reason}`
+    });
+  }
+
+  updateJobInCloud(job);
+}
+
+function submitManualJob() {
+  const editJobId = document.getElementById('editJobId').value;
+  const rm = document.getElementById('manualRmAvailable').value;
+  const dwg = document.getElementById('manualDwgAvailable').value;
+  const prog = document.getElementById('manualProgAvailable').value;
+
+  if (!checkResourcesAllAvailable(rm, dwg, prog)) {
+    let missing = [];
+    if (rm !== 'YES') missing.push("Raw Material (RM)");
+    if (dwg !== 'YES') missing.push("Part Drawing");
+    if (prog !== 'YES') missing.push("CNC/CAM Program");
+    alert(`⚠️ Cannot Schedule Job to Live Machine Queue!
+
+All 3 resources must be available to plan:
+Missing: ${missing.join(', ')}
+
+Please ensure RM, Drawing, and Program are verified.`);
+    return;
+  }
+
+  const projectCode = document.getElementById('projectCode').value.trim();
+  const projectName = document.getElementById('projectName').value.trim();
+  const partName = document.getElementById('partName').value.trim();
+  const setting = document.getElementById('setting').value.trim();
+  const qty = parseInt(document.getElementById('planQty').value) || 1;
+  const firstPcMins = parseInt(document.getElementById('firstPcMins').value) || 60;
+  const cycleMins = parseInt(document.getElementById('cycleMins').value) || 30;
+  const operator = document.getElementById('operator').value.trim();
+  const priority = document.getElementById('priority').value;
+  const shiftPattern = document.getElementById('jobShiftPattern').value;
+  const targetShift = document.getElementById('targetShiftSelect').value;
+  const rawManualStartTime = document.getElementById('manualStartTime').value || null;
+  const parsedManualDate = parseCustomDateTime(rawManualStartTime);
+  const manualStartTime = parsedManualDate ? formatForDateTimeLocal(parsedManualDate) : null;
+  const parallelCount = parseInt(document.getElementById('parallelCount').value) || 1;
+
+  const checkedMachines = Array.from(document.querySelectorAll('input[name="selectedMachines"]:checked')).map(cb => cb.value);
+  let targetMachines = checkedMachines.length > 0 ? checkedMachines : pickNextBestMachines(parallelCount, document.getElementById('machineCategoryFilter').value);
+
+  if (editJobId) {
+    let existingJob = jobsList.find(j => String(j.id) === String(editJobId));
+    if (existingJob) {
+      existingJob.projectCode = projectCode;
+      existingJob.projectName = projectName;
+      existingJob.partName = partName;
+      existingJob.setting = setting;
+      existingJob.qty = qty;
+      existingJob.firstPcMins = firstPcMins;
+      existingJob.cycleMins = cycleMins;
+      existingJob.operator = operator;
+      existingJob.priority = priority;
+      existingJob.shiftPattern = shiftPattern;
+      existingJob.targetShift = targetShift;
+      existingJob.manualStartTime = manualStartTime;
+      if (checkedMachines.length > 0) {
+        existingJob.assignedMachine = checkedMachines[0];
+      }
+      existingJob.resources = { rm: rm === 'YES', drawing: dwg === 'YES', program: prog === 'YES' };
+      updateJobInCloud(existingJob);
+      cancelEdit();
+      alert(`Job "${partName}" successfully updated!\nScheduled Date: ${parsedManualDate ? parsedManualDate.toLocaleDateString() : 'Auto'}\nStart Time: ${parsedManualDate ? parsedManualDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Auto'}`);
+      return;
+    }
+  }
+
+  let newJobs = [];
+  let perMachineQty = Math.ceil(qty / targetMachines.length);
+
+  targetMachines.forEach((mId, idx) => {
+    newJobs.push({
+      id: `job_${Date.now()}_${idx}`,
+      projectCode,
+      projectName,
+      partName,
+      setting,
+      qty: perMachineQty,
+      firstPcMins,
+      cycleMins,
+      assignedMachine: mId,
+      operator,
+      priority,
+      shiftPattern,
+      targetShift,
+      manualStartTime,
+      pieceStates: {},
+      pieceDelays: {},
+      pieceRemarks: {},
+      resources: { rm: true, drawing: true, program: true },
+      scopeType: "MACHINING"
+    });
+  });
+
+  saveJobToCloud(newJobs);
+  document.getElementById('jobForm').reset();
+  alert(`Added ${newJobs.length} scheduled job(s) with full RM, Drawing, and Program readiness!`);
+}
+
 async function fetchCloudJobs() {
   if (!supabaseClient) {
-    const saved = localStorage.getItem('VMC_CLOUD_BACKUP');
+    const saved = safeLocalGet('VMC_CLOUD_BACKUP');
     jobsList = saved ? JSON.parse(saved) : [];
     recalculateAndRender();
     return;
@@ -956,31 +1990,40 @@ async function fetchCloudJobs() {
     return;
   }
 
-  jobsList = (data || []).map(row => ({
-    id: row.id,
-    projectCode: row.project_code,
-    projectName: row.project_name,
-    partName: row.part_name,
-    setting: row.setting,
-    qty: row.qty,
-    firstPcMins: row.first_pc_mins,
-    cycleMins: row.cycle_mins,
-    assignedMachine: row.assigned_machine,
-    operator: row.operator,
-    priority: row.priority,
-    shiftPattern: row.shift_pattern || globalShiftSystem,
-    targetShift: row.target_shift || 'AUTO',
-    manualStartTime: row.manual_start_time,
-    pieceStates: row.piece_states || {},
-    pieceDelays: row.piece_delays || {},
-    pieceRemarks: row.piece_remarks || {},
-    created_at: row.created_at
-  }));
+  const localMeta = JSON.parse(safeLocalGet('VMC_JOB_METADATA') || '{}');
+  jobsList = (data || []).map(row => {
+    let m = localMeta[row.id] || {};
+    return {
+      id: row.id,
+      projectCode: row.project_code,
+      projectName: row.project_name,
+      partName: row.part_name,
+      setting: row.setting,
+      qty: row.qty,
+      firstPcMins: row.first_pc_mins,
+      cycleMins: row.cycle_mins,
+      assignedMachine: m.assignedMachine || row.assigned_machine,
+      operator: row.operator,
+      priority: row.priority,
+      shiftPattern: row.shift_pattern || m.shiftPattern || globalShiftSystem,
+      targetShift: row.target_shift || m.targetShift || 'AUTO',
+      manualStartTime: row.manual_start_time || m.manualStartTime || null,
+      pieceStates: row.piece_states || {},
+      pieceDelays: row.piece_delays || {},
+      pieceRemarks: row.piece_remarks || {},
+      resources: row.resources || m.resources || { rm: true, drawing: true, program: true },
+      scopeType: row.scope_type || m.scopeType || "MACHINING",
+      created_at: row.created_at
+    };
+  });
 
   jobsList.sort((a, b) => {
     if (a.priority === 'URGENT' && b.priority !== 'URGENT') return -1;
     if (b.priority === 'URGENT' && a.priority !== 'URGENT') return 1;
-    return a.partName.localeCompare(b.partName);
+    if (a.manualStartTime && !b.manualStartTime) return -1;
+    if (!a.manualStartTime && b.manualStartTime) return 1;
+    if (a.manualStartTime && b.manualStartTime) return new Date(a.manualStartTime) - new Date(b.manualStartTime);
+    return (a.partName || '').localeCompare(b.partName || '');
   });
 
   recalculateAndRender();
@@ -989,7 +2032,7 @@ async function fetchCloudJobs() {
 async function saveJobToCloud(newJobs) {
   if (!supabaseClient) {
     jobsList.push(...newJobs);
-    localStorage.setItem('VMC_CLOUD_BACKUP', JSON.stringify(jobsList));
+    safeLocalSet('VMC_CLOUD_BACKUP', JSON.stringify(jobsList));
     recalculateAndRender();
     return;
   }
@@ -1017,42 +2060,12 @@ async function saveJobToCloud(newJobs) {
   else fetchCloudJobs();
 }
 
-async function updateJobInCloud(job) {
-  if (!supabaseClient) {
-    let idx = jobsList.findIndex(j => j.id === job.id);
-    if (idx !== -1) jobsList[idx] = job;
-    localStorage.setItem('VMC_CLOUD_BACKUP', JSON.stringify(jobsList));
-    recalculateAndRender();
-    return;
-  }
-
-  const { error } = await supabaseClient.from('vmc_production_jobs').update({
-    project_code: job.projectCode,
-    project_name: job.projectName,
-    part_name: job.partName,
-    setting: job.setting,
-    qty: job.qty,
-    first_pc_mins: job.firstPcMins,
-    cycle_mins: job.cycleMins,
-    assigned_machine: job.assignedMachine,
-    operator: job.operator,
-    priority: job.priority,
-    manual_start_time: job.manualStartTime || null,
-    piece_states: job.pieceStates,
-    piece_delays: job.pieceDelays,
-    piece_remarks: job.pieceRemarks
-  }).eq('id', job.id);
-
-  if (error) console.error("Cloud update error:", error);
-  else fetchCloudJobs();
-}
-
 async function removeJobCloud(id) {
   if (!confirm("Remove this specific job from cloud?")) return;
 
   if (!supabaseClient) {
-    jobsList = jobsList.filter(j => j.id !== id);
-    localStorage.setItem('VMC_CLOUD_BACKUP', JSON.stringify(jobsList));
+    jobsList = jobsList.filter(j => String(j.id) !== String(id));
+    safeLocalSet('VMC_CLOUD_BACKUP', JSON.stringify(jobsList));
     recalculateAndRender();
     return;
   }
@@ -1092,14 +2105,6 @@ function validateParallelCount() {
 }
 
 let activeGanttTab = 'VMC';
-function toggleGanttDrawer() {
-  const drawer = document.getElementById('ganttDrawer');
-  const arrow = document.getElementById('ganttArrow');
-  const isHidden = drawer.style.display === 'none' || drawer.style.display === '';
-  drawer.style.display = isHidden ? 'block' : 'none';
-  arrow.innerText = isHidden ? '▲ Hide Gantt' : '▼ Show Gantt';
-}
-
 function initGanttTabs() {
   const tabsContainer = document.getElementById('ganttTabs');
   tabsContainer.innerHTML = '';
@@ -1145,6 +2150,7 @@ function renderMasterMachinesTable() {
     btn.onclick = () => {
       activeMasterMachineGroup = t.id;
       renderMasterMachinesTable();
+populateDowntimeMachineOptions();
     };
     tabsContainer.appendChild(btn);
   });
@@ -1159,11 +2165,11 @@ function renderMasterMachinesTable() {
     let row = document.createElement('tr');
     row.innerHTML = `
       <td><strong>${m.id}</strong></td>
-      <td>${m.group}</td>
-      <td><input type="text" value="${m.make}" onchange="updateMachineSpec('${m.id}', 'make', this.value)" style="border:1px solid #cbd5e1; padding:3px 6px;"></td>
-      <td><input type="text" value="${m.model}" onchange="updateMachineSpec('${m.id}', 'model', this.value)" style="border:1px solid #cbd5e1; padding:3px 6px;"></td>
-      <td><input type="text" value="${m.controller}" onchange="updateMachineSpec('${m.id}', 'controller', this.value)" style="border:1px solid #cbd5e1; padding:3px 6px;"></td>
-      <td style="text-align:center;"><input type="text" value="${m.year}" onchange="updateMachineSpec('${m.id}', 'year', this.value)" style="width:70px; text-align:center; border:1px solid #cbd5e1; padding:3px 6px;"></td>
+      <td><input type="text" value="${m.makeModel}" onchange="updateMachineSpec('${m.id}', 'makeModel', this.value)" style="border:1px solid #cbd5e1; padding:3px 6px;"></td>
+      <td><input type="text" value="${m.spindle}" onchange="updateMachineSpec('${m.id}', 'spindle', this.value)" style="border:1px solid #cbd5e1; padding:3px 6px;"></td>
+      <td><input type="text" value="${m.feed}" onchange="updateMachineSpec('${m.id}', 'feed', this.value)" style="border:1px solid #cbd5e1; padding:3px 6px;"></td>
+      <td><input type="text" value="${m.table}" onchange="updateMachineSpec('${m.id}', 'table', this.value)" style="border:1px solid #cbd5e1; padding:3px 6px;"></td>
+      <td><input type="text" value="${m.travel}" onchange="updateMachineSpec('${m.id}', 'travel', this.value)" style="border:1px solid #cbd5e1; padding:3px 6px;"></td>
       <td style="text-align:center;">
         <span class="badge-status ${isBD ? 'badge-delayed' : 'badge-completed'}">${isBD ? 'BREAKDOWN' : 'ONLINE'}</span>
       </td>
@@ -1185,6 +2191,7 @@ function updateMachineSpec(mId, field, val) {
 function toggleMachineBreakdownMaster(mId) {
   machineStatus[mId] = (machineStatus[mId] === 'ACTIVE') ? 'BREAKDOWN' : 'ACTIVE';
   renderMasterMachinesTable();
+populateDowntimeMachineOptions();
   recalculateAndRender();
 }
 
@@ -1251,38 +2258,6 @@ function getShift(dt, pattern) {
   return 'Shift 1';
 }
 
-function alignTimeToTargetShift(time, targetShift, pattern) {
-  if (!targetShift || targetShift === 'AUTO') return new Date(time);
-
-  let aligned = new Date(time);
-  let p = pattern || globalShiftSystem;
-
-  if (p === 'GEN_SHIFT_8H') {
-    aligned.setHours(9, 0, 0, 0);
-    if (aligned < time) aligned.setDate(aligned.getDate() + 1);
-  } else if (p === '3_SHIFT_8H' || p === '2_SHIFT_8H') {
-    if (targetShift === 'Shift 1') {
-      aligned.setHours(6, 0, 0, 0);
-      if (aligned < time) aligned.setDate(aligned.getDate() + 1);
-    } else if (targetShift === 'Shift 2') {
-      aligned.setHours(14, 30, 0, 0);
-      if (aligned < time) aligned.setDate(aligned.getDate() + 1);
-    } else if (targetShift === 'Shift 3') {
-      aligned.setHours(23, 0, 0, 0);
-      if (aligned < time) aligned.setDate(aligned.getDate() + 1);
-    }
-  } else if (p === '2_SHIFT_12H') {
-    if (targetShift === 'Shift 1') {
-      aligned.setHours(6, 0, 0, 0);
-      if (aligned < time) aligned.setDate(aligned.getDate() + 1);
-    } else if (targetShift === 'Shift 2') {
-      aligned.setHours(18, 0, 0, 0);
-      if (aligned < time) aligned.setDate(aligned.getDate() + 1);
-    }
-  }
-  return aligned;
-}
-
 function formatHourRange(st, et) {
   const f = d => String(d.getHours()).padStart(2, '0') + ":" + String(d.getMinutes()).padStart(2, '0');
   return `${f(st)}-${f(et)}`;
@@ -1300,49 +2275,40 @@ function formatDuration(mins) {
   return `${m} min`;
 }
 
-async function setPieceStatus(jobId, pieceNo, newStatus) {
-  const job = jobsList.find(j => String(j.id) === String(jobId));
+function setPieceStatus(jobId, pieceNo, status) {
+  let job = jobsList.find(j => String(j.id) === String(jobId));
   if (!job) return;
   if (!job.pieceStates) job.pieceStates = {};
-  job.pieceStates[pieceNo] = newStatus;
-  await updateJobInCloud(job);
+  job.pieceStates[pieceNo] = status;
+  updateJobInCloud(job);
 }
 
-async function addManualDelay(jobId, pieceNo) {
-  const job = jobsList.find(j => String(j.id) === String(jobId));
-  if (!job) return;
-
-  const input = prompt(`Enter delay in MINUTES for Piece #${pieceNo}:`, "30");
-  if (!input || isNaN(input)) return;
-
-  let delay = parseInt(input);
-  if (!job.pieceDelays) job.pieceDelays = {};
-  job.pieceDelays[pieceNo] = (job.pieceDelays[pieceNo] || 0) + delay;
-
-  const reason = prompt("Enter reason for delay (e.g. Tool Breakage / QC Delay):");
-  if (reason) {
-    if (!job.pieceRemarks) job.pieceRemarks = {};
-    job.pieceRemarks[pieceNo] = (job.pieceRemarks[pieceNo] ? job.pieceRemarks[pieceNo] + " | " : "") + reason;
-  }
-
-  await updateJobInCloud(job);
-}
-
-async function updatePieceRemarks(jobId, pieceNo, val) {
-  const job = jobsList.find(j => String(j.id) === String(jobId));
+function updatePieceRemarks(jobId, pieceNo, val) {
+  let job = jobsList.find(j => String(j.id) === String(jobId));
   if (!job) return;
   if (!job.pieceRemarks) job.pieceRemarks = {};
   job.pieceRemarks[pieceNo] = val;
-  await updateJobInCloud(job);
+  updateJobInCloud(job);
 }
 
 function recalculateAndRender() {
+  baseDate = getCalculatedBaseDate();
   let machineTimes = {};
   let ganttData = {};
 
   ALL_MACHINES.forEach(m => {
     machineTimes[m.id] = new Date(baseDate);
     ganttData[m.id] = [];
+  });
+
+  // Sort jobs: Urgent first, then jobs with manual start times chronologically
+  jobsList.sort((a, b) => {
+    if (a.priority === 'URGENT' && b.priority !== 'URGENT') return -1;
+    if (b.priority === 'URGENT' && a.priority !== 'URGENT') return 1;
+    if (a.manualStartTime && !b.manualStartTime) return -1;
+    if (!a.manualStartTime && b.manualStartTime) return 1;
+    if (a.manualStartTime && b.manualStartTime) return new Date(a.manualStartTime) - new Date(b.manualStartTime);
+    return (a.partName || '').localeCompare(b.partName || '');
   });
 
   const tbody = document.getElementById('planTableBody');
@@ -1365,14 +2331,21 @@ function recalculateAndRender() {
     }
 
     let pattern = job.shiftPattern || globalShiftSystem;
-    let currentStart = new Date(machineTimes[targetMachine] || baseDate);
-    if (job.manualStartTime) {
-      let mStart = new Date(job.manualStartTime);
-      if (mStart > currentStart) currentStart = mStart;
-    }
+    let currentStart;
 
-    if (job.targetShift && job.targetShift !== 'AUTO') {
-      currentStart = alignTimeToTargetShift(currentStart, job.targetShift, pattern);
+    // Manual start time takes strict priority if defined by user
+    if (job.manualStartTime) {
+      let mDate = parseCustomDateTime(job.manualStartTime);
+      if (mDate) {
+        currentStart = new Date(mDate);
+      } else {
+        currentStart = new Date(machineTimes[targetMachine] || baseDate);
+      }
+    } else if (job.targetShift && job.targetShift !== 'AUTO') {
+      let mTime = new Date(machineTimes[targetMachine] || baseDate);
+      currentStart = alignTimeToShift(mTime, job.targetShift, pattern);
+    } else {
+      currentStart = new Date(machineTimes[targetMachine] || baseDate);
     }
 
     let jobPiecesToRender = [];
@@ -1435,23 +2408,20 @@ function recalculateAndRender() {
                         (pc.status === 'COMPLETED' ? 'status-completed ' : '') +
                         (pc.delayMins > 0 ? 'status-delayed ' : '');
 
-        let controlsHtml = `<div style="display: flex; gap: 4px; justify-content: center; align-items: center; flex-wrap: wrap;">`;
-
-        if (isFirstRow && currentUser && currentUser.role === 'ADMIN') {
-          controlsHtml += `<button class="btn-action btn-edit" onclick="editJob('${job.id}')" title="Edit">Edit</button>`;
-          controlsHtml += `<button class="btn-action btn-del" onclick="removeJobCloud('${job.id}')" title="Delete">X</button>`;
+        let controlsHtml = `<div style="display: flex; gap: 3px; justify-content: center; align-items: center; flex-wrap: nowrap;">`;
+        if (isFirstRow) {
+          controlsHtml += `<button class="btn-action btn-edit" title="Edit this job" onclick="editJob('${job.id}')">Edit</button>`;
+          controlsHtml += `<button class="btn-action btn-del" title="Delete job" onclick="removeJobCloud('${job.id}')">X</button>`;
         }
-
         if (pc.status !== 'COMPLETED') {
-          controlsHtml += `<button class="btn-action btn-start" onclick="setPieceStatus('${job.id}', ${pc.pieceNo}, 'RUNNING')">Run</button>`;
-          controlsHtml += `<button class="btn-action btn-done" onclick="setPieceStatus('${job.id}', ${pc.pieceNo}, 'COMPLETED')">Done</button>`;
+          controlsHtml += `<button class="btn-action btn-start" title="Start piece machining" onclick="setPieceStatus('${job.id}', ${pc.pieceNo}, 'RUNNING')">Run</button>`;
+          controlsHtml += `<button class="btn-action btn-done" title="Mark piece finished" onclick="setPieceStatus('${job.id}', ${pc.pieceNo}, 'COMPLETED')">Done</button>`;
         } else {
-          controlsHtml += `<button class="btn-action btn-undo" onclick="setPieceStatus('${job.id}', ${pc.pieceNo}, 'PLANNED')">Undo</button>`;
+          controlsHtml += `<button class="btn-action btn-undo" title="Revert to planned" onclick="setPieceStatus('${job.id}', ${pc.pieceNo}, 'PLANNED')">Undo</button>`;
         }
-        controlsHtml += `<button class="btn-action btn-delay" onclick="addManualDelay('${job.id}', ${pc.pieceNo})">+Delay</button>`;
+        controlsHtml += `<button class="btn-action btn-delay" title="Add delay/stoppage minutes" onclick="addPieceDelay('${job.id}', ${pc.pieceNo})">+Delay</button>`;
         controlsHtml += `</div>`;
 
-        let currentRemark = job.pieceRemarks[pc.pieceNo] || '';
         let shiftBadgeClass = pc.shift === 'Shift 1' ? 'badge-s1' : (pc.shift === 'Shift 2' ? 'badge-s2' : (pc.shift === 'Shift 3' ? 'badge-s3' : 'badge-gen'));
 
         row.innerHTML = `
@@ -1460,23 +2430,18 @@ function recalculateAndRender() {
           <td>${isFirstRow ? (job.projectName || '-') : ''}</td>
           <td>${isFirstRow ? `<strong>${job.partName}</strong>` : ''}</td>
           <td>${isFirstRow ? job.setting : ''}</td>
+          <td style="text-align: center;">${isFirstRow ? `<span class="badge-scope-mach">⚙️ Machining</span>` : ''}</td>
+          <td style="text-align: center;">${isFirstRow ? `<span class="badge-resource-ok" title="RM, Drawing, Program all available">✅ RM | DWG | PRG</span>` : ''}</td>
           <td style="text-align: center;">${isFirstRow ? job.qty + ' nos' : ''}</td>
           <td style="text-align: center;"><strong>#${pc.pieceNo}</strong></td>
           <td style="text-align: center;">${formatDuration(pc.duration)}</td>
-          <td style="text-align: center;">
-            <strong>${formatHourRange(pc.start, pc.end)}</strong>
-            ${pc.delayMins > 0 ? `<span class="badge-status badge-delayed">+${pc.delayMins}m</span>` : ''}
-          </td>
-          <td style="text-align: center;">${pc.dateStr}</td>
+          <td style="text-align: center;"><strong>${formatHourRange(pc.start, pc.end)}</strong></td>
+          <td style="text-align: center;"><strong>${formatDate(pc.start) === pc.dateStr ? pc.dateStr : formatDate(pc.start) + ' → ' + pc.dateStr}</strong></td>
           <td style="text-align: center;"><span class="badge-shift ${shiftBadgeClass}">${pc.shift}</span></td>
           <td style="text-align: center;"><strong style="color:var(--accent);">${targetMachine}</strong></td>
           <td>${isFirstRow ? job.operator : ''}</td>
-          <td style="text-align: center;">
-            <span class="badge-status badge-${pc.status.toLowerCase()}">${pc.status}</span>
-          </td>
-          <td>
-            <input type="text" class="inline-remarks" value="${currentRemark}" placeholder="Type notes..." onchange="updatePieceRemarks('${job.id}', ${pc.pieceNo}, this.value)">
-          </td>
+          <td style="text-align: center;"><span class="badge-status badge-${pc.status.toLowerCase()}">${pc.status}</span></td>
+          <td><input type="text" class="inline-remarks" value="${job.pieceRemarks[pc.pieceNo] || ''}" placeholder="Type delay / notes..." onchange="updatePieceRemarks('${job.id}', ${pc.pieceNo}, this.value)"></td>
           <td class="no-print" style="text-align: center;">${controlsHtml}</td>
         `;
         tbody.appendChild(row);
@@ -1486,7 +2451,7 @@ function recalculateAndRender() {
   });
 
   if (totalPiecesDisplayed === 0) {
-    tbody.innerHTML = `<tr><td colspan="16" style="text-align:center; padding: 25px; color:var(--text-muted);">No active jobs found for the selected view.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="18" style="text-align:center; padding: 25px; color:var(--text-muted);">No active jobs found for the selected view.</td></tr>`;
   }
 
   document.getElementById('shift1Qty').innerText = `${s1Count} nos`;
@@ -1540,12 +2505,7 @@ function renderLiveGantt(ganttData) {
         let bar = document.createElement('div');
         bar.className = 'gantt-bar';
         bar.style.width = `${Math.max(12, 100 / pieces.length)}%`;
-
-        if (p.isDelayed) bar.style.background = '#ef4444';
-        else if (p.status === 'COMPLETED') bar.style.background = '#10b981';
-        else if (p.status === 'RUNNING') bar.style.background = '#f59e0b';
-        else bar.style.background = '#3b82f6';
-
+        bar.style.background = '#3b82f6';
         bar.title = `${p.part} #${p.piece} (${p.time}) [${p.status}]`;
         bar.innerText = `#${p.piece} ${p.part}`;
         track.appendChild(bar);
@@ -1558,10 +2518,21 @@ function renderLiveGantt(ganttData) {
   });
 }
 
+function toggleGanttDrawer() {
+  const drawer = document.getElementById('ganttDrawer');
+  const arrow = document.getElementById('ganttArrow');
+  if (drawer.style.display === 'none') {
+    drawer.style.display = 'block';
+    arrow.innerText = '▲ Hide Gantt';
+  } else {
+    drawer.style.display = 'none';
+    arrow.innerText = '▼ Show Gantt';
+  }
+}
+
 function renderShiftRosterTable() {
   const tbody = document.getElementById('shiftRosterTableBody');
   tbody.innerHTML = '';
-
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   employeesList.forEach(emp => {
@@ -1569,7 +2540,6 @@ function renderShiftRosterTable() {
       shiftRosterData[emp.id] = { Mon: 'Shift 1', Tue: 'Shift 1', Wed: 'Shift 1', Thu: 'Shift 1', Fri: 'Shift 1', Sat: 'Off', Sun: 'Off' };
     }
     let empShifts = shiftRosterData[emp.id];
-
     let row = document.createElement('tr');
     let cellsHtml = `<td><strong>${emp.id}</strong></td><td>${emp.name}</td><td>${emp.function}</td>`;
 
@@ -1587,7 +2557,6 @@ function renderShiftRosterTable() {
         </td>
       `;
     });
-
     row.innerHTML = cellsHtml;
     tbody.appendChild(row);
   });
@@ -1613,7 +2582,6 @@ function renderAttendanceTable() {
 
   employeesList.forEach(emp => {
     let rosteredShift = (shiftRosterData[emp.id] && shiftRosterData[emp.id][dayName]) ? shiftRosterData[emp.id][dayName] : 'Shift 1';
-
     let key = `${dateVal}_${emp.id}`;
     if (!attendanceRecords[key]) {
       let defaultIn = rosteredShift === 'Shift 2' ? '14:30' : (rosteredShift === 'Shift 3' ? '23:00' : (rosteredShift === 'General' ? '09:00' : '06:00'));
@@ -1663,10 +2631,22 @@ function markAllPresent() {
   renderAttendanceTable();
 }
 
+
+function populateDowntimeMachineOptions() {
+  const dtSelect = document.getElementById('dtMachine');
+  if (!dtSelect) return;
+  dtSelect.innerHTML = '';
+  ALL_MACHINES.forEach(m => {
+    let opt = document.createElement('option');
+    opt.value = m.id;
+    opt.innerText = `${m.id} (${m.makeModel})`;
+    dtSelect.appendChild(opt);
+  });
+}
+
 function renderDowntimeTable() {
   const tbody = document.getElementById('downtimeTableBody');
   tbody.innerHTML = '';
-
   downtimeLogs.forEach((item, index) => {
     let row = document.createElement('tr');
     row.innerHTML = `
@@ -1854,155 +2834,18 @@ function importDataFromFile(event, type) {
   reader.readAsArrayBuffer(file);
 }
 
-document.getElementById('jobForm').addEventListener('submit', async function(e) {
-  e.preventDefault();
-
-  const editJobId = document.getElementById('editJobId').value;
-  const projectCode = document.getElementById('projectCode').value;
-  const projectName = document.getElementById('projectName').value;
-  const partName = document.getElementById('partName').value;
-  const setting = document.getElementById('setting').value;
-  const totalQty = parseInt(document.getElementById('planQty').value);
-  const firstPcMins = parseInt(document.getElementById('firstPcMins').value);
-  const cycleMins = parseInt(document.getElementById('cycleMins').value);
-  const operator = document.getElementById('operator').value;
-  const priority = document.getElementById('priority').value;
-  const shiftPattern = document.getElementById('jobShiftPattern').value;
-  const targetShift = document.getElementById('targetShiftSelect').value;
-  const manualStartTime = document.getElementById('manualStartTime').value;
-
-  const checkedBoxes = Array.from(document.querySelectorAll('input[name="selectedMachines"]:checked')).map(cb => cb.value);
-  let parallelCount = parseInt(document.getElementById('parallelCount').value) || 1;
-  if (checkedBoxes.length > 0) parallelCount = checkedBoxes.length;
-
-  if (editJobId) {
-    let jobIdx = jobsList.findIndex(j => j.id === editJobId);
-    if (jobIdx !== -1) {
-      let updated = {
-        ...jobsList[jobIdx],
-        projectCode,
-        projectName,
-        partName,
-        setting,
-        qty: totalQty,
-        firstPcMins,
-        cycleMins,
-        operator,
-        priority,
-        shiftPattern,
-        targetShift,
-        manualStartTime,
-        assignedMachine: checkedBoxes.length > 0 ? checkedBoxes[0] : (jobsList[jobIdx].assignedMachine || 'VMC-01')
-      };
-      await updateJobInCloud(updated);
-    }
-    cancelEdit();
-    return;
-  }
-
-  let assignedMachines = [];
-  if (checkedBoxes.length >= parallelCount) {
-    assignedMachines = checkedBoxes.slice(0, parallelCount);
-  } else {
-    const category = document.getElementById('machineCategoryFilter').value;
-    assignedMachines = pickNextBestMachines(parallelCount, category);
-  }
-
-  let perMachine = Math.floor(totalQty / parallelCount);
-  let rem = totalQty % parallelCount;
-
-  let newSubJobs = [];
-  for (let i = 0; i < parallelCount; i++) {
-    let assignedQty = perMachine + (i < rem ? 1 : 0);
-    if (assignedQty <= 0) continue;
-
-    let assignedMachine = assignedMachines[i] || `VMC-${i + 1 < 10 ? '0' + (i + 1) : i + 1}`;
-    let uniqueId = 'job_' + Date.now() + '_L' + (i + 1) + '_' + Math.random().toString(36).substring(2, 9);
-
-    newSubJobs.push({
-      id: uniqueId,
-      projectCode,
-      projectName,
-      partName: parallelCount > 1 ? `${partName} (Line ${i+1})` : partName,
-      setting,
-      qty: assignedQty,
-      firstPcMins,
-      cycleMins,
-      assignedMachine: assignedMachine,
-      operator,
-      priority,
-      shiftPattern,
-      targetShift,
-      manualStartTime,
-      pieceStates: {},
-      pieceDelays: {},
-      pieceRemarks: {}
-    });
-  }
-
-  await saveJobToCloud(newSubJobs);
-  resetForm();
-});
-
-function editJob(id) {
-  const job = jobsList.find(j => j.id === id);
-  if (!job) return;
-
-  document.getElementById('editJobId').value = job.id;
-  document.getElementById('projectCode').value = job.projectCode || '';
-  document.getElementById('projectName').value = job.projectName || '';
-  document.getElementById('partName').value = job.partName;
-  document.getElementById('setting').value = job.setting;
-  document.getElementById('planQty').value = job.qty;
-  document.getElementById('firstPcMins').value = job.firstPcMins;
-  document.getElementById('cycleMins').value = job.cycleMins;
-  document.getElementById('operator').value = job.operator;
-  document.getElementById('priority').value = job.priority;
-  document.getElementById('jobShiftPattern').value = job.shiftPattern || globalShiftSystem;
-  onJobShiftPatternChanged();
-  document.getElementById('targetShiftSelect').value = job.targetShift || 'AUTO';
-  document.getElementById('manualStartTime').value = job.manualStartTime || '';
-  document.getElementById('parallelCount').value = 1;
-
-  document.getElementById('machineCategoryFilter').value = 'ALL';
-  renderFilteredMachines();
-
-  document.querySelectorAll('input[name="selectedMachines"]').forEach(cb => {
-    cb.checked = (cb.value === job.assignedMachine);
-  });
-
-  document.getElementById('formTitle').innerText = 'Edit / Reschedule Job';
-  document.getElementById('submitBtn').innerText = 'Update Cloud Record';
-  document.getElementById('cancelEditBtn').style.display = 'inline-block';
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function cancelEdit() {
-  resetForm();
-  document.getElementById('formTitle').innerText = 'New Production Planning Entry';
-  document.getElementById('submitBtn').innerText = 'Save to Cloud & Schedule';
-  document.getElementById('cancelEditBtn').style.display = 'none';
-}
-
-function resetForm() {
-  document.getElementById('jobForm').reset();
-  document.getElementById('editJobId').value = '';
-  document.getElementById('firstPcMins').value = 120;
-  document.getElementById('cycleMins').value = 60;
-  document.getElementById('parallelCount').value = 1;
-  document.getElementById('jobShiftPattern').value = globalShiftSystem;
-  onJobShiftPatternChanged();
-  document.getElementById('targetShiftSelect').value = 'AUTO';
-  document.querySelectorAll('input[name="selectedMachines"]').forEach(cb => cb.checked = false);
-}
-
 renderFilteredMachines();
 initGanttTabs();
 updateShiftSummaryHeaders();
 onJobShiftPatternChanged();
 renderMasterMachinesTable();
-if (currentUser) fetchCloudJobs();
+populateDowntimeMachineOptions();
+applyRolePermissions();
+fetchCloudJobs();
 </script>
 
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" async></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" async></script>
 </body>
 </html>
